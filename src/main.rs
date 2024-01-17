@@ -200,39 +200,36 @@ fn flash_page(window: MainWindow, page: FlashPage) -> Grid {
 
     layout.attach(&status_label, 0, 2, 1, 1);
 
-    glib::spawn_future_local({
-        let status = page.status;
-        async move {
-            loop {
-                match status.recv().await {
-                    Ok(FlashStatus::StartingFlash) => {
-                        status_label.set_label("Starting flash")
+    glib::spawn_future_local(async move {
+        loop {
+            match page.status.recv().await {
+                Ok(FlashStatus::StartingFlash) => {
+                    status_label.set_label("Starting flash")
+                }
+                Ok(FlashStatus::Image(image)) => {
+                    status_label.set_label(&format!("Writing {image}..."));
+                    progress_bar.set_fraction(0.0);
+                }
+                Ok(FlashStatus::Progress(written, total)) => {
+                    if total != 0 {
+                        let progress = written as f64 / total as f64;
+                        progress_bar.set_fraction(progress);
                     }
-                    Ok(FlashStatus::Image(image)) => {
-                        status_label.set_label(&format!("Writing {image}..."));
-                        progress_bar.set_fraction(0.0);
-                    }
-                    Ok(FlashStatus::Progress(written, total)) => {
-                        if total != 0 {
-                            let progress = written as f64 / total as f64;
-                            progress_bar.set_fraction(progress);
-                        }
-                    }
-                    Ok(FlashStatus::Complete) => {
-                        let page = complete("✅ Flashing complete!");
-                        window.set_child(Some(&page));
-                        break;
-                    }
-                    Ok(FlashStatus::Error(error)) => {
-                        let page = complete(&format!("⚠️ {error}"));
-                        window.set_child(Some(&page));
-                        break;
-                    }
-                    Err(_) => {
-                        let page = complete("⚠️ Flasher terminated unexpectedly");
-                        window.set_child(Some(&page));
-                        break;
-                    }
+                }
+                Ok(FlashStatus::Complete) => {
+                    let page = complete("✅ Flashing complete!");
+                    window.set_child(Some(&page));
+                    break;
+                }
+                Ok(FlashStatus::Error(error)) => {
+                    let page = complete(&format!("⚠️ {error}"));
+                    window.set_child(Some(&page));
+                    break;
+                }
+                Err(_) => {
+                    let page = complete("⚠️ Flasher terminated unexpectedly");
+                    window.set_child(Some(&page));
+                    break;
                 }
             }
         }
