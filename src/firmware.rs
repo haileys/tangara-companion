@@ -1,4 +1,4 @@
-use std::io::Read;
+use std::io::{Read, self};
 use std::path::{Path, PathBuf};
 use std::fs::File;
 
@@ -6,13 +6,14 @@ use thiserror::Error;
 use zip::ZipArchive;
 use zip::result::ZipError;
 
-use self::data::ManifestV0;
+use self::data::{ManifestV0, FirmwareImage};
+
+const MAX_IMAGE_SIZE: usize = 32 * 1024 * 1024;
 
 pub struct Firmware {
     path: PathBuf,
-    #[allow(unused)]
-    zip: ZipArchive<File>,
     manifest: ManifestV0,
+    images: Vec<Image>,
 }
 
 #[derive(Debug, Error)]
@@ -29,6 +30,18 @@ pub enum OpenError {
     ParseManifest(#[source] serde_json::Error),
     #[error("Firmware archive newer than this version of Tangara Flasher supports")]
     UnsupportedVersion,
+    #[error("Reading image: {0}: {1}")]
+    ReadImage(String, #[source] ReadImageError),
+}
+
+#[derive(Debug, Error)]
+pub enum ReadImageError {
+    #[error("archive error: {0}")]
+    NotFound(#[from] ZipError),
+    #[error("image too large: {0} bytes")]
+    TooLarge(u64),
+    #[error("I/O error: {0}")]
+    Io(#[from] io::Error),
 }
 
 impl Firmware {
@@ -36,10 +49,11 @@ impl Firmware {
         let file = File::open(path).map_err(OpenError::Open)?;
         let mut zip = ZipArchive::new(file)?;
         let manifest = read_manifest(&mut zip)?;
+        let images = read_images(&mut zip, &manifest.firmware)?;
         Ok(Firmware {
             path: path.to_owned(),
-            zip,
             manifest,
+            images,
         })
     }
 
@@ -50,6 +64,16 @@ impl Firmware {
     pub fn version(&self) -> &str {
         &self.manifest.firmware.version
     }
+
+    pub fn images(&self) -> &[Image] {
+        &self.images
+    }
+}
+
+pub struct Image {
+    pub name: String,
+    pub addr: u32,
+    pub data: Vec<u8>,
 }
 
 pub mod data {
@@ -102,4 +126,41 @@ fn read_manifest(zip: &mut ZipArchive<File>) -> Result<ManifestV0, OpenError> {
         .map_err(OpenError::ParseManifest)?;
 
     Ok(manifest)
+}
+
+fn read_images(zip: &mut ZipArchive<File>, firmware: &data::Firmware)
+    -> Result<Vec<Image>, OpenError>
+{
+    let mut images = Vec::new();
+
+    for image in &firmware.images {
+        let data = read_image_data(zip, &image.name).map_err(|error| {
+            OpenError::ReadImage(image.name.clone(), error)
+        })?;
+
+        eprintln!("image {} @ {:x?}, {} bytes", image.name, image.addr, data.len());
+
+        images.push(Image {
+            name: image.name.clone(),
+            addr: image.addr,
+            data: data,
+        });
+    }
+
+    Ok(images)
+}
+
+fn read_image_data(zip: &mut ZipArchive<File>, name: &str)
+    -> Result<Vec<u8>, ReadImageError>
+{
+    let mut file = zip.by_name(name)?;
+
+    let size = usize::try_from(file.size()).ok()
+        .filter(|sz| *sz < MAX_IMAGE_SIZE)
+        .ok_or_else(|| ReadImageError::TooLarge(file.size()))?;
+
+    let mut data = vec![0; size];
+    file.read_exact(&mut data)?;
+
+    Ok(data)
 }
