@@ -201,6 +201,7 @@ fn flash_page(window: MainWindow, page: FlashPage) -> Grid {
     layout.attach(&status_label, 0, 2, 1, 1);
 
     glib::spawn_future_local(async move {
+        let mut current_image = None;
         loop {
             match page.status.recv().await {
                 Ok(FlashStatus::StartingFlash) => {
@@ -209,11 +210,16 @@ fn flash_page(window: MainWindow, page: FlashPage) -> Grid {
                 Ok(FlashStatus::Image(image)) => {
                     status_label.set_label(&format!("Writing {image}..."));
                     progress_bar.set_fraction(0.0);
+                    current_image = Some(image);
                 }
                 Ok(FlashStatus::Progress(written, total)) => {
                     if total != 0 {
                         let progress = written as f64 / total as f64;
                         progress_bar.set_fraction(progress);
+                    }
+
+                    if let Some(image) = &current_image {
+                        status_label.set_label(&format!("Writing {image}... block {written}/{total}"));
                     }
                 }
                 Ok(FlashStatus::Complete) => {
