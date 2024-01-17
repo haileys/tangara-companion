@@ -1,5 +1,3 @@
-use std::{path::Path, error::Error};
-
 use async_channel::{Receiver, Sender};
 use espflash::{interface::Interface, flasher::{Flasher, ProgressCallbacks}};
 use serialport::{SerialPortType, SerialPortInfo, UsbPortInfo};
@@ -120,7 +118,7 @@ struct ProgressCallback {
 }
 
 impl ProgressCallbacks for ProgressCallback {
-    fn init(&mut self, addr: u32, total: usize) {
+    fn init(&mut self, _: u32, total: usize) {
         self.total = total;
         let status = FlashStatus::Image(self.image.clone());
         let _ = self.sender.send_blocking(status);

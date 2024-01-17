@@ -2,24 +2,19 @@ pub mod firmware;
 pub mod flash;
 
 use std::cell::RefCell;
-use std::io::{self, ErrorKind};
-use std::path::{Path, PathBuf};
 use std::rc::Rc;
 
-use faccess::{PathExt, AccessMode};
-use firmware::Firmware;
-use flash::{TangaraPort, FlashStatus};
 use gtk::gio::{Cancellable, File};
 use gtk::prelude::{ApplicationExt, ApplicationExtManual, GridExt, GtkWindowExt, ButtonExt, FileExt, WidgetExt};
 use gtk::{Grid, Label, FileDialog, FileFilter, Align, ProgressBar};
 use gtk::{glib, Button, Application, ApplicationWindow};
-use thiserror::Error;
+
+use firmware::Firmware;
+use flash::FlashStatus;
 
 const APP_ID: &str = "zone.cooltech.tangara.TangaraFlasher";
 
 fn main() -> glib::ExitCode {
-    flash::find_tangara();
-
     let app = Application::builder().application_id(APP_ID).build();
     app.connect_activate(build_window);
     app.run()
@@ -256,43 +251,4 @@ fn complete(message: &str) -> Grid {
     layout.attach(&label, 0, 1, 1, 1);
 
     layout
-}
-
-#[derive(Debug, Error)]
-#[error("Error looking for Tangara in /dev/serial/by-id: {0}")]
-struct FindTangaraError(#[from] io::Error);
-
-fn find_tangara() -> Result<Option<PathBuf>, FindTangaraError> {
-    for entry in std::fs::read_dir("/dev/serial/by-id/")? {
-        let entry = entry?;
-        let name = entry.file_name();
-        let Some(name) = name.to_str() else { continue };
-        if !name.starts_with("usb-cool_tech_zone_Tangara_") { continue }
-        if !name.ends_with("-if00") { continue }
-        return Ok(Some(entry.path()));
-    }
-    Ok(None)
-}
-
-#[derive(Debug, Error)]
-enum CheckTangaraError {
-    #[error("{0}")]
-    Find(#[from] FindTangaraError),
-    #[error("Can't find Tangara (is it plugged in?)")]
-    NotFound,
-    #[error("Tangara is plugged in, but we don't have permission to flash it")]
-    NoPermissions,
-    #[error("I/O error: {0}")]
-    IoError(#[from] io::Error),
-}
-
-fn check_tangara() -> Result<PathBuf, CheckTangaraError> {
-    let path = find_tangara()?.ok_or(CheckTangaraError::NotFound)?;
-
-    match path.access(AccessMode::READ | AccessMode::WRITE) {
-        Ok(()) => Ok(path),
-        Err(e) if e.kind() == ErrorKind::NotFound => Err(CheckTangaraError::NotFound),
-        Err(e) if e.kind() == ErrorKind::PermissionDenied => Err(CheckTangaraError::NoPermissions),
-        Err(e) => Err(e.into()),
-    }
 }

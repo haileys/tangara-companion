@@ -6,13 +6,11 @@ use thiserror::Error;
 use zip::ZipArchive;
 use zip::result::ZipError;
 
-use self::data::{ManifestV0, FirmwareImage};
-
 const MAX_IMAGE_SIZE: usize = 32 * 1024 * 1024;
 
 pub struct Firmware {
     path: PathBuf,
-    manifest: ManifestV0,
+    manifest: data::ManifestV0,
     images: Vec<Image>,
 }
 
@@ -103,7 +101,7 @@ pub mod data {
     }
 }
 
-fn read_manifest(zip: &mut ZipArchive<File>) -> Result<ManifestV0, OpenError> {
+fn read_manifest(zip: &mut ZipArchive<File>) -> Result<data::ManifestV0, OpenError> {
     let mut manifest_file = zip.by_name("tangaraflash.json").map_err(|error| {
         match error {
             ZipError::FileNotFound => OpenError::NoManifest,
