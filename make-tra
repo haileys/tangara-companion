@@ -1,0 +1,53 @@
+#!/bin/bash
+set -euo pipefail
+
+# nerf colours if tput doesn't exist or stdout is not a tty
+COLORS=1
+command -v tput >/dev/null && [ -t 0 ] || COLORS=
+
+tput() {
+    [ -n "$COLORS" ] && command tput "$@"
+}
+
+L() {
+    echo "$(tput setaf 1 bold)error:$(tput sgr0)$(tput bold)" "$@" "$(tput sgr0)" >&2
+    exit 1
+}
+
+W() {
+    echo "$(tput setaf 2 bold)yay!$(tput sgr0)$(tput bold)" "$@" "$(tput sgr0)"
+}
+
+cd "$(dirname "$0")"
+SRC_DIR="$(pwd)"
+
+# create staging dir for zip
+TMP_DIR="/tmp/make-tra-$$"
+mkdir -p "$TMP_DIR" || L "creating staging dir: $TMP_DIR"
+
+# write the needful
+[ -e tangara.bin -a -e lua.bin ] || L "expected to find tangara.bin and lua.bin in root of source dir, please put them there"
+cp tangara.bin lua.bin "$TMP_DIR/" || L "copying bins to staging dir"
+cat > "$TMP_DIR/tangaraflash.json" <<JSON || die "writing json manifest to staging dir"
+    {
+        "version": 0,
+        "data": {
+            "firmware": {
+                "version": "v0.420.69 idk",
+                "images": [
+                    { "addr": 65536, "name": "tangara.bin" },
+                    { "addr": 11599872, "name": "lua.bin" }
+                ]
+            }
+        }
+    }
+JSON
+
+# generate da TRA (Tangara Runtime Archive)
+cd "$TMP_DIR"
+zip -9 tangarafw.tra tangaraflash.json tangara.bin lua.bin || L "creating zip archive"
+
+# move built TRA back to source dir
+mv tangarafw.tra "$SRC_DIR/" || L "moving zip archive to $SRC_DIR"
+
+W "created tangarafw.tra"

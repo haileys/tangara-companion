@@ -1,0 +1,5 @@
+/target
+*.glade
+*~
+*.bin
+*.tra
