@@ -1,47 +1,14 @@
+use std::sync::Arc;
+
 use async_channel::{Receiver, Sender};
-use espflash::{interface::Interface, flasher::{Flasher, ProgressCallbacks}};
-use serialport::{SerialPortType, SerialPortInfo, UsbPortInfo};
+use espflash::interface::Interface;
+use espflash::flasher::{Flasher, ProgressCallbacks};
 use thiserror::Error;
 
+use crate::device::Tangara;
 use crate::firmware::{Firmware, Image};
 
-const USB_VID: u16 = 4617; // cool tech zone
-const USB_PID: u16 = 8212; // Tangara
 const BAUD_RATE: u32 = 1500000;
-
-pub struct TangaraPort {
-    serial: SerialPortInfo,
-    usb: UsbPortInfo,
-}
-
-impl TangaraPort {
-    pub fn port_name(&self) -> &str {
-        &self.serial.port_name
-    }
-}
-
-#[derive(Debug, Error)]
-pub enum FindTangaraError {
-    #[error("Error enumerating serial ports: {0}")]
-    Port(#[from] serialport::Error),
-    #[error("Can't find Tangara (is it plugged in?)")]
-    NoTangara,
-}
-
-pub fn find_tangara() -> Result<TangaraPort, FindTangaraError> {
-    for port in serialport::available_ports()? {
-        if let SerialPortType::UsbPort(usb) = &port.port_type {
-            if usb.vid == USB_VID && usb.pid == USB_PID {
-                return Ok(TangaraPort {
-                    serial: port.clone(),
-                    usb: usb.clone(),
-                });
-            }
-        }
-    }
-
-    Err(FindTangaraError::NoTangara)
-}
 
 pub enum FlashStatus {
     StartingFlash,
@@ -51,11 +18,11 @@ pub enum FlashStatus {
     Complete,
 }
 
-pub fn start_flash(port: TangaraPort, firmware: Firmware) -> Receiver<FlashStatus> {
+pub fn start_flash(port: Tangara, firmware: Arc<Firmware>) -> Receiver<FlashStatus> {
     let (tx, rx) = async_channel::bounded(32);
 
     gtk::gio::spawn_blocking(move || {
-        match run_flash(port, firmware, tx.clone()) {
+        match run_flash(port, &firmware, tx.clone()) {
             Ok(()) => { let _ = tx.send_blocking(FlashStatus::Complete); }
             Err(error) => { let _ = tx.send_blocking(FlashStatus::Error(error)); }
         }
@@ -75,8 +42,8 @@ pub enum FlashError {
 }
 
 fn run_flash(
-    port: TangaraPort,
-    firmware: Firmware,
+    port: Tangara,
+    firmware: &Firmware,
     sender: Sender<FlashStatus>,
 ) -> Result<(), FlashError> {
     let _ = sender.send_blocking(FlashStatus::StartingFlash);
@@ -89,7 +56,7 @@ fn run_flash(
 }
 
 fn flash_image(
-    port: &TangaraPort,
+    port: &Tangara,
     image: &Image,
     sender: &Sender<FlashStatus>
 ) -> Result<(), FlashError> {

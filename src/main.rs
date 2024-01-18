@@ -1,15 +1,21 @@
-pub mod firmware;
-pub mod flash;
+mod device;
+mod firmware;
+mod flash;
 
 use std::cell::RefCell;
+use std::rc::Rc;
+use std::sync::Arc;
 
+use device::Tangara;
+use futures::StreamExt;
 use gtk::gio::{Cancellable, File};
+use gtk::pango::ffi::PANGO_SCALE;
 use gtk::prelude::{ApplicationExt, ApplicationExtManual, GridExt, GtkWindowExt, ButtonExt, FileExt, WidgetExt};
 use gtk::{Grid, Label, FileDialog, FileFilter, Align, ProgressBar};
 use gtk::{glib, Button};
 
 use firmware::Firmware;
-use flash::FlashStatus;
+use flash::{FlashStatus, FlashError};
 
 const APP_ID: &str = "zone.cooltech.tangara.TangaraFlasher";
 
@@ -37,21 +43,18 @@ impl App {
         let window = adw::ApplicationWindow::builder()
             .application(app)
             .content(&nav)
+            .valign(Align::Start)
             .build();
 
         window.present();
 
         App { window, nav }
     }
-
-    pub fn push(&self, page: adw::NavigationPage) {
-        self.nav.push(&page);
-    }
 }
 
 fn start(app: &adw::Application) {
     let app = App::new(app);
-    app.push(welcome_page(app.clone()));
+    app.nav.push(&welcome_page(app.clone()));
 }
 
 fn rows() -> Grid {
@@ -61,7 +64,7 @@ fn rows() -> Grid {
         .margin_start(20)
         .margin_end(20)
         .row_spacing(20)
-        .hexpand(true)
+        .valign(Align::Start)
         .column_homogeneous(true)
         .build()
 }
@@ -103,8 +106,8 @@ fn welcome_page(app: App) -> adw::NavigationPage {
 
                             match Firmware::open(&path) {
                                 Ok(firmware) => {
-                                    app.push(firmware_page(app.clone(), FirmwarePage {
-                                        firmware,
+                                    app.nav.push(&firmware_page(app.clone(), FirmwarePage {
+                                        firmware: Arc::new(firmware),
                                     }));
                                 }
                                 Err(error) => {
@@ -124,12 +127,9 @@ fn welcome_page(app: App) -> adw::NavigationPage {
     layout.attach(&welcome_label, 0, 1, 1, 1);
     layout.attach(&select_firmware_button, 0, 2, 1, 1);
 
-    let clamp = adw::Clamp::builder()
-        .child(&layout)
-        .build();
-
     let view = adw::ToolbarView::builder()
-        .content(&clamp)
+        .content(&layout)
+        .valign(Align::Start)
         .build();
 
     let header = adw::HeaderBar::builder()
@@ -144,13 +144,11 @@ fn welcome_page(app: App) -> adw::NavigationPage {
 }
 
 struct FirmwarePage {
-    firmware: Firmware,
+    firmware: Arc<Firmware>,
 }
 
 fn firmware_page(app: App, page: FirmwarePage) -> adw::NavigationPage {
     let layout = rows();
-
-    let tangara = flash::find_tangara();
 
     let path_label = Label::builder()
         .label(format!("Firmware: {}", page.firmware.path().display()))
@@ -162,48 +160,59 @@ fn firmware_page(app: App, page: FirmwarePage) -> adw::NavigationPage {
         .halign(Align::Start)
         .build();
 
-    layout.attach(&path_label, 0, 0, 1, 1);
-    layout.attach(&version_label, 0, 1, 1, 1);
-
-    if let Ok(port) = &tangara {
-        let device_label = Label::builder()
-            .label(format!("Device: {}", port.port_name()))
-            .halign(Align::Start)
-            .build();
-
-        layout.attach(&device_label, 0, 2, 1, 1);
-    }
-
     let status_label = Label::builder()
-        .label(match &tangara {
-            Ok(_) => "✅ Ready to flash".to_owned(),
-            Err(error) => format!("⚠️ {error}"),
-        })
         .halign(Align::Start)
         .build();
 
     let flash_button = Button::builder()
         .label("Flash!")
-        .sensitive(tangara.is_ok())
+        .sensitive(false)
         .build();
 
-    flash_button.connect_clicked({
-        let data = RefCell::new(tangara.ok().map(|tangara| {
-            (tangara, page.firmware)
-        }));
+    layout.attach(&path_label, 0, 0, 1, 1);
+    layout.attach(&version_label, 0, 1, 1, 1);
+    layout.attach(&status_label, 0, 3, 1, 1);
+    layout.attach(&flash_button, 0, 4, 1, 1);
 
-        move |button| {
-            button.set_sensitive(false);
+    let tangara = Rc::new(RefCell::new(None));
 
-            if let Some((tangara, firmware)) = data.borrow_mut().take() {
-                let status = flash::start_flash(tangara, firmware);
-                app.push(flash_page(app.clone(), FlashPage { status }));
+    let task = glib::spawn_future_local({
+        let tangara = tangara.clone();
+        let flash_button = flash_button.clone();
+        async move {
+            let mut stream = Tangara::watch();
+
+            while let Some(result) = stream.next().await {
+                status_label.set_label(&match &result {
+                    Ok(tangara) => format!("✅ Ready to flash Tangara at {}", tangara.port_name()),
+                    Err(error) => format!("⚠️ {error}"),
+                });
+
+                flash_button.set_sensitive(result.is_ok());
+
+                *tangara.borrow_mut() = result.ok().clone();
             }
         }
     });
 
-    layout.attach(&status_label, 0, 3, 1, 1);
-    layout.attach(&flash_button, 0, 4, 1, 1);
+    flash_button.connect_clicked({
+        let tangara = tangara.clone();
+        let firmware = page.firmware.clone();
+        move |button| {
+            let Some(tangara) = tangara.borrow().clone() else { return };
+
+            button.set_sensitive(false);
+
+            let status = flash::start_flash(tangara.clone(), firmware.clone());
+            app.nav.push(&flash_page(app.clone(), FlashPage { status }));
+        }
+    });
+
+    // make sure we cancel the background task when our UI goes away
+    layout.connect_destroy(move |_| {
+        eprintln!("destroying layout, destroying task!");
+        task.abort();
+    });
 
     let view = adw::ToolbarView::builder()
         .content(&layout)
@@ -229,7 +238,7 @@ fn flash_page(app: App, page: FlashPage) -> adw::NavigationPage {
     let layout = rows();
 
     let flashing_label = Label::builder()
-        .label("Flashing... do not disconnect Tangara")
+        .label("Do not disconnect Tangara")
         .build();
 
     layout.attach(&flashing_label, 0, 0, 1, 1);
@@ -268,38 +277,83 @@ fn flash_page(app: App, page: FlashPage) -> adw::NavigationPage {
                     }
                 }
                 Ok(FlashStatus::Complete) => {
-                    app.push(complete("✅ Flashing complete!"));
+                    app.nav.pop();
+                    app.nav.push(&complete(Ok(())));
                     break;
                 }
                 Ok(FlashStatus::Error(error)) => {
-                    app.push(complete(&format!("⚠️ {error}")));
+                    app.nav.pop();
+                    app.nav.push(&complete(Err(Some(error))));
                     break;
                 }
                 Err(_) => {
-                    app.push(complete("⚠️ Flasher terminated unexpectedly"));
+                    app.nav.pop();
+                    app.nav.push(&complete(Err(None)));
                     break;
                 }
             }
         }
     });
 
+    let view = adw::ToolbarView::builder()
+        .content(&layout)
+        .build();
+
+    let header = adw::HeaderBar::builder()
+        .show_back_button(false)
+        .show_end_title_buttons(false)
+        .build();
+
+    view.add_top_bar(&header);
+
     adw::NavigationPage::builder()
-        .child(&layout)
+        .child(&view)
         .title("Flashing firmware")
         .build()
 }
 
-fn complete(message: &str) -> adw::NavigationPage {
+fn complete(message: Result<(), Option<FlashError>>) -> adw::NavigationPage {
     let layout = rows();
 
-    let label = Label::builder()
-        .label(message)
+    let icon = Label::builder()
+        .label(match &message {
+            Ok(()) => "✅",
+            Err(_) => "⚠️",
+        })
         .build();
 
-    layout.attach(&label, 0, 1, 1, 1);
+    if let Some(mut font) = icon.pango_context().font_description() {
+        font.set_size(36 * PANGO_SCALE);
+        icon.pango_context().set_font_description(Some(&font));
+    }
+
+    layout.attach(&icon, 0, 1, 1, 1);
+
+    let text = Label::builder()
+        .label(match &message {
+            Ok(()) => "Please enjoy your freshly updated Tangara".to_owned(),
+            Err(Some(error)) => format!("{error}"),
+            Err(None) => "Unknown error".to_owned(),
+        })
+        .build();
+
+    layout.attach(&text, 0, 2, 1, 1);
+
+    let view = adw::ToolbarView::builder()
+        .content(&layout)
+        .build();
+
+    let header = adw::HeaderBar::builder()
+        .show_back_button(true)
+        .build();
+
+    view.add_top_bar(&header);
 
     adw::NavigationPage::builder()
-        .child(&layout)
-        .title("Tangara Flasher")
+        .child(&view)
+        .title(match &message {
+            Ok(()) => "Flash complete",
+            Err(_) => "Flash failed",
+        })
         .build()
 }
