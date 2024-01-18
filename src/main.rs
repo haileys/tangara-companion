@@ -1,3 +1,5 @@
+#![windows_subsystem = "windows"]
+
 mod device;
 mod firmware;
 mod flash;
