@@ -7,6 +7,7 @@ usage() {
         echo ""
         echo "options:"
         echo "  --help                          This help"
+        echo "  --version <version>             Version to write to release archive, reads from firmware image by default"
         echo "  --firmware <firmware bin>       Path to main firmware binary, defaults to tangara.bin"
         echo "  --lua <lua bin>                 Path to lua code binary, defaults to lua.bin"
     } >&2
@@ -16,8 +17,15 @@ usage() {
 # read command line options
 TANGARA_BIN=tangara.bin
 LUA_BIN=lua.bin
+VERSION=
 while [ "$#" -gt 0 ]; do
     case "$1" in
+        --version)
+            [ "$#" -ge 2 ] || usage
+            VERSION="$2"
+            shift
+            shift
+            ;;
         --firmware)
             [ "$#" -ge 2 ] || usage
             TANGARA_BIN="$2"
@@ -78,9 +86,9 @@ check-command zip
 [ -e "$LUA_BIN" ] || die "lua image not found: $LUA_BIN"
 
 # read version out of firmware image
-TANGARA_VER="$(dd if="$TANGARA_BIN" bs=16 count=1 skip=3 status=none | tr -d '\000')" || die "reading version from firmware image"
-[ -n "$TANGARA_VER" ] || die "no version in firmware image"
-echo "$(tput setaf 4 bold)Found firmware version:$(tput sgr0) $(tput bold)$TANGARA_VER$(tput sgr0)"
+[ -n "$VERSION" ] || VERSION="$(dd if="$TANGARA_BIN" bs=16 count=1 skip=3 status=none | tr -d '\000')" || die "reading version from firmware image"
+[ -n "$VERSION" ] || die "no version in firmware image"
+echo "$(tput setaf 4 bold)Found firmware version:$(tput sgr0) $(tput bold)${VERSION}$(tput sgr0)"
 
 # create staging dir for zip
 TMP_DIR="/tmp/make-tra-$$"
@@ -94,7 +102,7 @@ cat > "$TMP_DIR/tangaraflash.json" <<JSON || die "writing json manifest to stagi
         "version": 0,
         "data": {
             "firmware": {
-                "version": "$TANGARA_VER",
+                "version": "$VERSION",
                 "images": [
                     { "addr": 65536, "name": "tangara.bin" },
                     { "addr": 11599872, "name": "lua.bin" }
