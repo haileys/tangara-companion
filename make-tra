@@ -1,39 +1,100 @@
 #!/bin/bash
 set -euo pipefail
 
+usage() {
+    {
+        echo "usage: $0 [opts..]"
+        echo ""
+        echo "options:"
+        echo "  --help                          This help"
+        echo "  --firmware <firmware bin>       Path to main firmware binary, defaults to tangara.bin"
+        echo "  --lua <lua bin>                 Path to lua code binary, defaults to lua.bin"
+    } >&2
+    exit 1
+}
+
+# read command line options
+TANGARA_BIN=tangara.bin
+LUA_BIN=lua.bin
+while [ "$#" -gt 0 ]; do
+    case "$1" in
+        --firmware)
+            [ "$#" -ge 2 ] || usage
+            TANGARA_BIN="$2"
+            shift
+            shift
+            ;;
+        --lua)
+            [ "$#" -ge 2 ] || usage
+            LUA_BIN="$2"
+            shift
+            shift
+            ;;
+        --help)
+            usage
+            ;;
+        *)
+            echo "unknown option: $1" >&2
+            echo "" >&2
+            usage
+            ;;
+    esac
+done
+
 # nerf colours if tput doesn't exist or stdout is not a tty
 COLORS=1
 command -v tput >/dev/null && [ -t 0 ] || COLORS=
 
+# useful helper functions
 tput() {
     [ -n "$COLORS" ] && command tput "$@"
 }
 
-L() {
+die() {
     echo "$(tput setaf 1 bold)error:$(tput sgr0)$(tput bold)" "$@" "$(tput sgr0)" >&2
     exit 1
 }
 
-W() {
+info() {
+    echo "$(tput setaf 4 bold)++++$(tput sgr0)$(tput bold)" "$@" "$(tput sgr0)"
+}
+
+win() {
     echo "$(tput setaf 2 bold)yay!$(tput sgr0)$(tput bold)" "$@" "$(tput sgr0)"
 }
 
-cd "$(dirname "$0")"
-SRC_DIR="$(pwd)"
+check-command() {
+    local bin="$1"
+    command -v "$bin" >/dev/null || die "command '$bin' not found in PATH"
+}
+
+# check for prerequisite commands
+check-command dd
+check-command tr
+check-command zip
+
+# validate existence of firmware images
+[ -e "$TANGARA_BIN" ] || die "firmware image not found: $TANGARA_BIN"
+[ -e "$LUA_BIN" ] || die "lua image not found: $LUA_BIN"
+
+# read version out of firmware image
+TANGARA_VER="$(dd if="$TANGARA_BIN" bs=16 count=1 skip=3 status=none | tr -d '\000')" || die "reading version from firmware image"
+[ -n "$TANGARA_VER" ] || die "no version in firmware image"
+echo "$(tput setaf 4 bold)Found firmware version:$(tput sgr0) $(tput bold)$TANGARA_VER$(tput sgr0)"
 
 # create staging dir for zip
 TMP_DIR="/tmp/make-tra-$$"
-mkdir -p "$TMP_DIR" || L "creating staging dir: $TMP_DIR"
+mkdir -p "$TMP_DIR" || die "creating staging dir: $TMP_DIR"
 
 # write the needful
-[ -e tangara.bin -a -e lua.bin ] || L "expected to find tangara.bin and lua.bin in root of source dir, please put them there"
-cp tangara.bin lua.bin "$TMP_DIR/" || L "copying bins to staging dir"
+cp "$TANGARA_BIN" "$TMP_DIR/tangara.bin" || die "copying firmware image to staging dir"
+cp "$LUA_BIN" "$TMP_DIR/lua.bin" || die "copying lua image to staging dir"
 cat > "$TMP_DIR/tangaraflash.json" <<JSON || die "writing json manifest to staging dir"
     {
         "version": 0,
         "data": {
             "firmware": {
-                "version": "v0.420.69 idk",
+                "version": "$TANGARA_VER",
                 "images": [
                     { "addr": 65536, "name": "tangara.bin" },
                     { "addr": 11599872, "name": "lua.bin" }
@@ -43,11 +104,10 @@ cat > "$TMP_DIR/tangaraflash.json" <<JSON || die "writing json manifest to stagi
     }
 JSON
 
-# generate da TRA (Tangara Runtime Archive)
-cd "$TMP_DIR"
-zip -9 tangarafw.tra tangaraflash.json tangara.bin lua.bin || L "creating zip archive"
+# generate the TRA (Tangara Release Archive)
+(cd "$TMP_DIR" && zip -9 tangarafw.tra tangaraflash.json tangara.bin lua.bin) || die "creating zip archive"
 
 # move built TRA back to source dir
-mv tangarafw.tra "$SRC_DIR/" || L "moving zip archive to $SRC_DIR"
+mv "$TMP_DIR/tangarafw.tra" "." || die "moving zip archive to cwd"
 
-W "created tangarafw.tra"
+win "created tangarafw.tra"
