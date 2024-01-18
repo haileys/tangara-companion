@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use async_channel::{Receiver, Sender};
+use futures::channel::{mpsc, oneshot};
 use espflash::interface::Interface;
 use espflash::flasher::{Flasher, ProgressCallbacks};
 use thiserror::Error;
@@ -14,21 +14,23 @@ pub enum FlashStatus {
     StartingFlash,
     Image(String),
     Progress(usize, usize),
-    Error(FlashError),
-    Complete,
 }
 
-pub fn start_flash(port: Tangara, firmware: Arc<Firmware>) -> Receiver<FlashStatus> {
-    let (tx, rx) = async_channel::bounded(32);
+pub struct Flash {
+    pub progress: mpsc::Receiver<FlashStatus>,
+    pub result: oneshot::Receiver<Result<(), FlashError>>,
+}
+
+pub fn start_flash(port: Tangara, firmware: Arc<Firmware>) -> Flash {
+    let (progress_tx, progress) = mpsc::channel(32);
+    let (result_tx, result) = oneshot::channel();
 
     gtk::gio::spawn_blocking(move || {
-        match run_flash(port, &firmware, tx.clone()) {
-            Ok(()) => { let _ = tx.send_blocking(FlashStatus::Complete); }
-            Err(error) => { let _ = tx.send_blocking(FlashStatus::Error(error)); }
-        }
+        let result = run_flash(port, &firmware, progress_tx);
+        let _ = result_tx.send(result);
     });
 
-    rx
+    Flash { progress, result }
 }
 
 #[derive(Debug, Error)]
@@ -44,9 +46,9 @@ pub enum FlashError {
 fn run_flash(
     port: Tangara,
     firmware: &Firmware,
-    sender: Sender<FlashStatus>,
+    mut sender: mpsc::Sender<FlashStatus>,
 ) -> Result<(), FlashError> {
-    let _ = sender.send_blocking(FlashStatus::StartingFlash);
+    let _ = sender.try_send(FlashStatus::StartingFlash);
 
     for image in firmware.images() {
         flash_image(&port, &image, &sender)?;
@@ -58,7 +60,7 @@ fn run_flash(
 fn flash_image(
     port: &Tangara,
     image: &Image,
-    sender: &Sender<FlashStatus>
+    sender: &mpsc::Sender<FlashStatus>
 ) -> Result<(), FlashError> {
     let interface = Interface::new(&port.serial, None, None)
         .map_err(|error| FlashError::OpenInterface(format!("{}", error)))?;
@@ -81,14 +83,14 @@ fn flash_image(
 struct ProgressCallback {
     image: String,
     total: usize,
-    sender: Sender<FlashStatus>,
+    sender: mpsc::Sender<FlashStatus>,
 }
 
 impl ProgressCallbacks for ProgressCallback {
     fn init(&mut self, _: u32, total: usize) {
         self.total = total;
         let status = FlashStatus::Image(self.image.clone());
-        let _ = self.sender.send_blocking(status);
+        let _ = self.sender.try_send(status);
     }
 
     fn update(&mut self, current: usize) {

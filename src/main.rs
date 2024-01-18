@@ -18,7 +18,7 @@ use gtk::{glib, Button};
 
 use device::Tangara;
 use firmware::Firmware;
-use flash::{FlashStatus, FlashError};
+use flash::{FlashStatus, FlashError, Flash};
 
 const APP_ID: &str = "zone.cooltech.tangara.TangaraFlasher";
 
@@ -221,8 +221,8 @@ fn firmware_page(app: App, page: FirmwarePage) -> adw::NavigationPage {
 
             button.set_sensitive(false);
 
-            let status = flash::start_flash(tangara.clone(), firmware.clone());
-            app.nav.push(&flash_page(app.clone(), FlashPage { status }));
+            let flash = flash::start_flash(tangara.clone(), firmware.clone());
+            app.nav.push(&flash_page(app.clone(), flash));
         }
     });
 
@@ -248,11 +248,7 @@ fn firmware_page(app: App, page: FirmwarePage) -> adw::NavigationPage {
         .build()
 }
 
-struct FlashPage {
-    status: async_channel::Receiver<FlashStatus>,
-}
-
-fn flash_page(app: App, page: FlashPage) -> adw::NavigationPage {
+fn flash_page(app: App, mut flash: Flash) -> adw::NavigationPage {
     let layout = rows();
 
     let flashing_label = Label::builder()
@@ -272,19 +268,20 @@ fn flash_page(app: App, page: FlashPage) -> adw::NavigationPage {
 
     layout.attach(&status_label, 0, 2, 1, 1);
 
+    // progress channel
     glib::spawn_future_local(async move {
         let mut current_image = None;
-        loop {
-            match page.status.recv().await {
-                Ok(FlashStatus::StartingFlash) => {
+        while let Some(progress) = flash.progress.next().await {
+            match progress {
+                FlashStatus::StartingFlash => {
                     status_label.set_label("Starting flash")
                 }
-                Ok(FlashStatus::Image(image)) => {
+                FlashStatus::Image(image) => {
                     status_label.set_label(&format!("Writing {image}..."));
                     progress_bar.set_fraction(0.0);
                     current_image = Some(image);
                 }
-                Ok(FlashStatus::Progress(written, total)) => {
+                FlashStatus::Progress(written, total) => {
                     if total != 0 {
                         let progress = written as f64 / total as f64;
                         progress_bar.set_fraction(progress);
@@ -294,23 +291,20 @@ fn flash_page(app: App, page: FlashPage) -> adw::NavigationPage {
                         status_label.set_label(&format!("Writing {image}... block {written}/{total}"));
                     }
                 }
-                Ok(FlashStatus::Complete) => {
-                    app.nav.pop();
-                    app.nav.push(&complete(Ok(())));
-                    break;
-                }
-                Ok(FlashStatus::Error(error)) => {
-                    app.nav.pop();
-                    app.nav.push(&complete(Err(Some(error))));
-                    break;
-                }
-                Err(_) => {
-                    app.nav.pop();
-                    app.nav.push(&complete(Err(None)));
-                    break;
-                }
             }
         }
+    });
+
+    // result channel
+    glib::spawn_future_local(async move {
+        let result = match flash.result.await {
+            Ok(Ok(())) => Ok(()),
+            Ok(Err(e)) => Err(Some(e)),
+            Err(_) => Err(None),
+        };
+
+        app.nav.pop();
+        app.nav.push(&complete(result));
     });
 
     let view = adw::ToolbarView::builder()
