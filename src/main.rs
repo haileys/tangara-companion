@@ -1,14 +1,12 @@
 pub mod firmware;
 pub mod flash;
 
-use std::cell::{RefCell, Cell};
-use std::rc::Rc;
+use std::cell::RefCell;
 
 use gtk::gio::{Cancellable, File};
-use gtk::glib::IsA;
 use gtk::prelude::{ApplicationExt, ApplicationExtManual, GridExt, GtkWindowExt, ButtonExt, FileExt, WidgetExt};
-use gtk::{Grid, Label, FileDialog, FileFilter, Align, ProgressBar, Stack, StackTransitionType, Widget};
-use gtk::{glib, Button, Application, ApplicationWindow};
+use gtk::{Grid, Label, FileDialog, FileFilter, Align, ProgressBar};
+use gtk::{glib, Button};
 
 use firmware::Firmware;
 use flash::FlashStatus;
@@ -16,67 +14,59 @@ use flash::FlashStatus;
 const APP_ID: &str = "zone.cooltech.tangara.TangaraFlasher";
 
 fn main() -> glib::ExitCode {
-    let app = Application::builder().application_id(APP_ID).build();
+    let app = adw::Application::builder()
+        .application_id(APP_ID)
+        .build();
+
     app.connect_activate(start);
     app.run()
 }
 
 #[derive(Clone)]
 struct App {
-    window: ApplicationWindow,
-    stack: Stack,
-    page_no: Rc<Cell<usize>>,
+    window: adw::ApplicationWindow,
+    nav: adw::NavigationView,
 }
 
 impl App {
-    pub fn new(app: &Application) -> Self {
-        let stack = Stack::builder()
-            .transition_type(StackTransitionType::SlideLeftRight)
-            .transition_duration(200)
-            .interpolate_size(true)
-            .hhomogeneous(true)
-            .margin_top(20)
-            .margin_bottom(20)
-            .margin_start(20)
-            .margin_end(20)
+    pub fn new(app: &adw::Application) -> Self {
+        let nav = adw::NavigationView::builder()
+            .pop_on_escape(true)
             .build();
 
-        let window = ApplicationWindow::builder()
+        let window = adw::ApplicationWindow::builder()
             .application(app)
-            .title("Tangara Flasher")
-            .child(&stack)
+            .content(&nav)
             .build();
 
         window.present();
 
-        App { window, stack, page_no: Default::default() }
+        App { window, nav }
     }
 
-    pub fn set_page(&self, page: impl IsA<Widget>) {
-        let page_no = self.page_no.get();
-        self.page_no.set(page_no + 1);
-
-        let name = format!("page-{}", page_no);
-        let page = self.stack.add_titled(&page, Some(&name), "");
-        page.set_visible(true);
-        self.stack.set_visible_child_name(&name);
+    pub fn push(&self, page: adw::NavigationPage) {
+        self.nav.push(&page);
     }
 }
 
-fn start(app: &Application) {
+fn start(app: &adw::Application) {
     let app = App::new(app);
-    app.set_page(welcome_page(app.clone()));
+    app.push(welcome_page(app.clone()));
 }
 
 fn rows() -> Grid {
     Grid::builder()
+        .margin_top(20)
+        .margin_bottom(20)
+        .margin_start(20)
+        .margin_end(20)
         .row_spacing(20)
         .hexpand(true)
         .column_homogeneous(true)
         .build()
 }
 
-fn welcome_page(app: App) -> Grid {
+fn welcome_page(app: App) -> adw::NavigationPage {
     let layout = rows();
 
     let welcome_label = Label::builder()
@@ -113,7 +103,7 @@ fn welcome_page(app: App) -> Grid {
 
                             match Firmware::open(&path) {
                                 Ok(firmware) => {
-                                    app.set_page(firmware_page(app.clone(), FirmwarePage {
+                                    app.push(firmware_page(app.clone(), FirmwarePage {
                                         firmware,
                                     }));
                                 }
@@ -134,14 +124,30 @@ fn welcome_page(app: App) -> Grid {
     layout.attach(&welcome_label, 0, 1, 1, 1);
     layout.attach(&select_firmware_button, 0, 2, 1, 1);
 
-    layout
+    let clamp = adw::Clamp::builder()
+        .child(&layout)
+        .build();
+
+    let view = adw::ToolbarView::builder()
+        .content(&clamp)
+        .build();
+
+    let header = adw::HeaderBar::builder()
+        .build();
+
+    view.add_top_bar(&header);
+
+    adw::NavigationPage::builder()
+        .child(&view)
+        .title("Tangara Flasher")
+        .build()
 }
 
 struct FirmwarePage {
     firmware: Firmware,
 }
 
-fn firmware_page(app: App, page: FirmwarePage) -> Grid {
+fn firmware_page(app: App, page: FirmwarePage) -> adw::NavigationPage {
     let layout = rows();
 
     let tangara = flash::find_tangara();
@@ -191,8 +197,7 @@ fn firmware_page(app: App, page: FirmwarePage) -> Grid {
 
             if let Some((tangara, firmware)) = data.borrow_mut().take() {
                 let status = flash::start_flash(tangara, firmware);
-                let page = flash_page(app.clone(), FlashPage { status });
-                app.set_page(page);
+                app.push(flash_page(app.clone(), FlashPage { status }));
             }
         }
     });
@@ -200,14 +205,27 @@ fn firmware_page(app: App, page: FirmwarePage) -> Grid {
     layout.attach(&status_label, 0, 3, 1, 1);
     layout.attach(&flash_button, 0, 4, 1, 1);
 
-    layout
+    let view = adw::ToolbarView::builder()
+        .content(&layout)
+        .build();
+
+    let header = adw::HeaderBar::builder()
+        .show_back_button(true)
+        .build();
+
+    view.add_top_bar(&header);
+
+    adw::NavigationPage::builder()
+        .child(&view)
+        .title("Review firmware")
+        .build()
 }
 
 struct FlashPage {
     status: async_channel::Receiver<FlashStatus>,
 }
 
-fn flash_page(app: App, page: FlashPage) -> Grid {
+fn flash_page(app: App, page: FlashPage) -> adw::NavigationPage {
     let layout = rows();
 
     let flashing_label = Label::builder()
@@ -250,28 +268,28 @@ fn flash_page(app: App, page: FlashPage) -> Grid {
                     }
                 }
                 Ok(FlashStatus::Complete) => {
-                    let page = complete("✅ Flashing complete!");
-                    app.set_page(page);
+                    app.push(complete("✅ Flashing complete!"));
                     break;
                 }
                 Ok(FlashStatus::Error(error)) => {
-                    let page = complete(&format!("⚠️ {error}"));
-                    app.set_page(page);
+                    app.push(complete(&format!("⚠️ {error}")));
                     break;
                 }
                 Err(_) => {
-                    let page = complete("⚠️ Flasher terminated unexpectedly");
-                    app.set_page(page);
+                    app.push(complete("⚠️ Flasher terminated unexpectedly"));
                     break;
                 }
             }
         }
     });
 
-    layout
+    adw::NavigationPage::builder()
+        .child(&layout)
+        .title("Flashing firmware")
+        .build()
 }
 
-fn complete(message: &str) -> Grid {
+fn complete(message: &str) -> adw::NavigationPage {
     let layout = rows();
 
     let label = Label::builder()
@@ -280,5 +298,8 @@ fn complete(message: &str) -> Grid {
 
     layout.attach(&label, 0, 1, 1, 1);
 
-    layout
+    adw::NavigationPage::builder()
+        .child(&layout)
+        .title("Tangara Flasher")
+        .build()
 }
