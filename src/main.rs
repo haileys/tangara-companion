@@ -9,7 +9,6 @@ use std::rc::Rc;
 use std::sync::Arc;
 use std::thread;
 
-use device::Tangara;
 use futures::StreamExt;
 use gtk::gio::{Cancellable, File};
 use gtk::pango::ffi::PANGO_SCALE;
@@ -17,6 +16,7 @@ use gtk::prelude::{ApplicationExt, ApplicationExtManual, GridExt, GtkWindowExt, 
 use gtk::{Grid, Label, FileDialog, FileFilter, Align, ProgressBar};
 use gtk::{glib, Button};
 
+use device::Tangara;
 use firmware::Firmware;
 use flash::{FlashStatus, FlashError};
 
