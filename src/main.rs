@@ -46,6 +46,7 @@ impl App {
             .valign(Align::Start)
             .build();
 
+        window.set_resizable(false);
         window.present();
 
         App { window, nav }
