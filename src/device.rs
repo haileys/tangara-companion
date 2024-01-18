@@ -1,8 +1,8 @@
-use std::{time::Duration, panic};
+use std::time::Duration;
 
 use futures::{Stream, SinkExt};
 use futures::channel::mpsc;
-use gtk::{gio, glib};
+use gtk::glib;
 use serialport::{SerialPortInfo, UsbPortInfo, SerialPortType};
 use thiserror::Error;
 
@@ -14,6 +14,14 @@ const USB_PID: u16 = 8212; // Tangara
 pub struct Tangara {
     pub serial: SerialPortInfo,
     pub usb: UsbPortInfo,
+}
+
+#[derive(Debug, Error)]
+pub enum FindTangaraError {
+    #[error("Error enumerating serial ports: {0}")]
+    Port(#[from] serialport::Error),
+    #[error("Can't find Tangara (is it plugged in?)")]
+    NoTangara,
 }
 
 impl Tangara {
@@ -41,32 +49,17 @@ impl Tangara {
     }
 
     pub async fn find() -> Result<Tangara, FindTangaraError> {
-        match gio::spawn_blocking(|| find_tangara_blocking()).await {
-            Ok(result) => result,
-            Err(payload) => panic::resume_unwind(payload),
-        }
-    }
-}
-
-#[derive(Debug, Error)]
-pub enum FindTangaraError {
-    #[error("Error enumerating serial ports: {0}")]
-    Port(#[from] serialport::Error),
-    #[error("Can't find Tangara (is it plugged in?)")]
-    NoTangara,
-}
-
-fn find_tangara_blocking() -> Result<Tangara, FindTangaraError> {
-    for port in serialport::available_ports()? {
-        if let SerialPortType::UsbPort(usb) = &port.port_type {
-            if usb.vid == USB_VID && usb.pid == USB_PID {
-                return Ok(Tangara {
-                    serial: port.clone(),
-                    usb: usb.clone(),
-                });
+        for port in serialport::available_ports()? {
+            if let SerialPortType::UsbPort(usb) = &port.port_type {
+                if usb.vid == USB_VID && usb.pid == USB_PID {
+                    return Ok(Tangara {
+                        serial: port.clone(),
+                        usb: usb.clone(),
+                    });
+                }
             }
         }
-    }
 
-    Err(FindTangaraError::NoTangara)
+        Err(FindTangaraError::NoTangara)
+    }
 }
