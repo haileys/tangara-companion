@@ -5,6 +5,7 @@ mod flash;
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::sync::Arc;
+use std::thread;
 
 use device::Tangara;
 use futures::StreamExt;
@@ -20,6 +21,20 @@ use flash::{FlashStatus, FlashError};
 const APP_ID: &str = "zone.cooltech.tangara.TangaraFlasher";
 
 fn main() -> glib::ExitCode {
+    if cfg!(target_os = "windows") {
+        // we need larger stack on windows
+        thread::Builder::new()
+            .stack_size(8 * 1024 * 1024)
+            .spawn(app_main)
+            .unwrap()
+            .join()
+            .unwrap()
+    } else {
+        app_main()
+    }
+}
+
+fn app_main() -> glib::ExitCode {
     let app = adw::Application::builder()
         .application_id(APP_ID)
         .build();
