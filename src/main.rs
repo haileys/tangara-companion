@@ -101,7 +101,7 @@ fn welcome_page(app: App) -> adw::NavigationPage {
 
     select_firmware_button.connect_clicked(move |_| {
         let filter = FileFilter::new();
-        filter.add_pattern("*.tra");
+        filter.add_suffix("tra");
 
         let current_dir = std::env::current_dir().unwrap();
 
