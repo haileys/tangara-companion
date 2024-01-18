@@ -1,7 +1,6 @@
 pub mod firmware;
 pub mod flash;
 
-use std::borrow::BorrowMut;
 use std::cell::{RefCell, Cell};
 use std::rc::Rc;
 
@@ -21,8 +20,6 @@ fn main() -> glib::ExitCode {
     app.connect_activate(start);
     app.run()
 }
-
-type MainWindow = Rc<ApplicationWindow>;
 
 #[derive(Clone)]
 struct App {
