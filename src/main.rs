@@ -369,3 +369,12 @@ fn complete(message: Result<(), Option<FlashError>>) -> adw::NavigationPage {
         })
         .build()
 }
+
+#[no_mangle]
+#[allow(unused)]
+// this function is patched out of libadwaita by gvsbuild on windows.
+// to prevent linker errors in debug mode, supply the symbol ourselves.
+// in release mode there is no linker error as we do not use this symbol.
+extern "C" fn __imp_adw_about_window_new_from_appdata() {
+    unimplemented!("__imp_adw_about_window_new_from_appdata")
+}
