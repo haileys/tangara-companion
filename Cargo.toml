@@ -15,3 +15,6 @@ serde_json = "1.0"
 serialport = "4.3"
 thiserror = "1.0"
 zip = { version = "0.6" }
+
+[patch.crates-io]
+serialport = { git = "https://github.com/haileys/serialport-rs", branch = "tangara-flasher" }

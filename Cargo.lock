@@ -1469,8 +1469,7 @@ dependencies = [
 [[package]]
 name = "serialport"
 version = "4.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8f5a15d0be940df84846264b09b51b10b931fb2f275becb80934e3568a016828"
+source = "git+https://github.com/haileys/serialport-rs?branch=tangara-flasher#254368237a0e5185cc6e08a060964d033e01a382"
 dependencies = [
  "bitflags 2.4.2",
  "cfg-if",
