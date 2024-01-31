@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   width="1200"
+   height="1200"
+   viewBox="0 0 317.49996 317.49996"
+   version="1.1"
+   id="svg1"
+   inkscape:version="1.3.2 (091e20ef0f, 2023-11-25, custom)"
+   sodipodi:docname="icon.svg"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview1"
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1.0"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:document-units="px"
+     inkscape:zoom="0.65625372"
+     inkscape:cx="495.99719"
+     inkscape:cy="492.94959"
+     inkscape:window-width="1720"
+     inkscape:window-height="1371"
+     inkscape:window-x="20"
+     inkscape:window-y="20"
+     inkscape:window-maximized="0"
+     inkscape:current-layer="layer1" />
+  <defs
+     id="defs1">
+    <linearGradient
+       gradientUnits="userSpaceOnUse"
+       x1="250"
+       y1="-1.117"
+       x2="250"
+       y2="501.116"
+       id="gradient-0"
+       gradientTransform="matrix(0.26458333,0,0,0.26458333,38.729179,82.448665)">
+      <stop
+         offset="0"
+         style="stop-color: rgb(255, 255, 255);"
+         id="stop1" />
+      <stop
+         offset="0.478"
+         style="stop-color: rgb(255, 255, 255);"
+         id="stop2" />
+      <stop
+         offset="0.48030741857603576"
+         style=""
+         id="stop3" />
+      <stop
+         offset="1"
+         style=""
+         id="stop4" />
+    </linearGradient>
+  </defs>
+  <g
+     inkscape:label="Layer 1"
+     inkscape:groupmode="layer"
+     id="layer1">
+    <g
+       id="g1"
+       transform="matrix(3.1474454,0,0,3.1474454,-166.0467,-212.14379)">
+      <g
+         transform="matrix(0.97290492,0,0,0.80470824,-103.40254,-158.47275)"
+         id="g12">
+        <rect
+           x="184.008"
+           y="348.92801"
+           width="13.133"
+           height="3.224"
+           style="fill:#ff7f1d"
+           id="rect9" />
+        <path
+           d="m 197.143,348.928 h 10.194 v 0.552 c 0,1.258 0.893,2.321 2.122,2.672 h -12.316 z"
+           style="fill:#ffd42f"
+           id="path9" />
+        <path
+           d="m 231.013,348.928 v 3.224 h -12.699 c 1.229,-0.351 2.122,-1.414 2.122,-2.672 v -0.552 z"
+           style="fill:#92e62b"
+           id="path10" />
+        <rect
+           x="231.013"
+           y="348.92801"
+           width="13.133"
+           height="3.224"
+           style="fill:#27d8ff"
+           id="rect10" />
+        <rect
+           x="244.147"
+           y="348.92801"
+           width="13.133"
+           height="3.224"
+           style="fill:#c910fa"
+           id="rect11" />
+        <rect
+           x="170.87601"
+           y="348.92801"
+           width="13.133"
+           height="3.224"
+           style="fill:#ff000c"
+           id="rect12" />
+      </g>
+      <text
+         style="font-weight:700;font-size:5.29167px;font-family:Belinsky;white-space:pre;fill:#f2f2f2;stroke:#ffffff;stroke-width:0px;paint-order:stroke"
+         x="18.454159"
+         y="28.638235"
+         id="text12"><tspan
+           x="63.972015"
+           y="120.62592"
+           style="font-size:19.4469px;word-spacing:0px;fill:#000000;stroke-width:0px"
+           id="tspan12">tangara</tspan></text>
+    </g>
+  </g>
+</svg>
