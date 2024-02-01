@@ -1,0 +1,47 @@
+#!/bin/bash
+### usage: build-macos [opts..]
+###
+### Builds "Tangara Flasher.app" for macOS
+
+set -euo pipefail
+cd "$(dirname "$0")/.."
+source script/lib/functions.sh
+
+BUILD=release
+TARGET=x86_64-apple-darwin
+
+# check for prerequisites first:
+check-command brew "is homebrew installed?"
+
+add-pkgconfig-path() {
+    local path="$1"
+    [ -n "${PKG_CONFIG_PATH:-}" ] && PKG_CONFIG_PATH=":$PKG_CONFIG_PATH"
+    export PKG_CONFIG_PATH="${path}${PKG_CONFIG_PATH:-}"
+}
+
+use-brew-pkg() {
+    local lib="$1"
+    local path
+
+    # get canonical path to pkgconfig dir for requested package:
+    path="$(brew --prefix "$lib")/lib/pkgconfig"
+    path="$(realpath "$path")"
+
+    add-pkgconfig-path "$path"
+}
+
+# add the packages we need from homebrew to PKG_CONFIG_PATH
+log "resolving requisite homebrew packages"
+use-brew-pkg libffi
+use-brew-pkg glib
+use-brew-pkg pango
+use-brew-pkg gtk4
+use-brew-pkg libadwaita
+use-brew-pkg curl
+
+# do the rust compile
+cargo_args=()
+[[ "$BUILD" == "release"]] && cargo_args+="--release"
+
+log "running cargo build"
+cargo build --target="$TARGET" "${cargo_args[@]}"
