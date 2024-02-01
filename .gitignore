@@ -1,4 +1,6 @@
 /target
+/dist
+/cross
 *.glade
 *~
 *.bin
