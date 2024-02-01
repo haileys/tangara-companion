@@ -7,15 +7,10 @@
 ###   --version <version>     Version to write to release archive, reads from firmware image by default
 ###   --firmware <path>       Path to main firmware binary, defaults to tangara.bin
 ###   --lua <path>            Path to lua code binary, defaults to lua.bin
-set -euo pipefail
 
+set -euo pipefail
 cd "$(dirname "$0")/.."
 source script/lib/functions.sh
-
-usage() {
-    sed -nEe 's/^###$//p; s/^### (.*)/\1/p' "$0" >&2
-    exit 1
-}
 
 # read command line options
 TANGARA_BIN=tangara.bin
