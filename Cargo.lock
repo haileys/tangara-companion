@@ -1668,7 +1668,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "tangaraflash"
+name = "tangaraflasher"
 version = "0.2.0"
 dependencies = [
  "espflash",
