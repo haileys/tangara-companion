@@ -33,3 +33,8 @@ check-command() {
 
     command -v "$bin" >/dev/null || die "command '${bin}' not found in PATH${hint}"
 }
+
+log-command() {
+    info "running:" "$@"
+    "$@"
+}

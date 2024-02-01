@@ -6,12 +6,10 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 source script/lib/functions.sh
+source script/lib/error.sh
 
 BUILD=release
 TARGET=x86_64-apple-darwin
-
-# check for prerequisites first:
-check-command brew "is homebrew installed?"
 
 add-pkgconfig-path() {
     local path="$1"
@@ -30,8 +28,12 @@ use-brew-pkg() {
     add-pkgconfig-path "$path"
 }
 
+# check for prerequisites first:
+check-command brew "is homebrew installed?"
+check-command dylibbundler "to fix: brew install dylibbundler"
+
 # add the packages we need from homebrew to PKG_CONFIG_PATH
-log "resolving requisite homebrew packages"
+info "resolving requisite homebrew packages"
 use-brew-pkg libffi
 use-brew-pkg glib
 use-brew-pkg pango
@@ -39,9 +41,88 @@ use-brew-pkg gtk4
 use-brew-pkg libadwaita
 use-brew-pkg curl
 
-# do the rust compile
-cargo_args=()
-[[ "$BUILD" == "release"]] && cargo_args+="--release"
+# grab version number from git
+version="$(git describe --tags)"
+info "Version $version"
 
-log "running cargo build"
-cargo build --target="$TARGET" "${cargo_args[@]}"
+# pass --release to cargo if BUILD==release:
+cargo_args=()
+[[ "$BUILD" == "release" ]] && cargo_args+="--release"
+
+# do the build
+log-command cargo build --target="$TARGET" "${cargo_args[@]}"
+
+# assemble macOS .app bundle
+info "assembling 'Tangara Flasher.app' bundle"
+
+build_dir="target/$TARGET/$BUILD"
+bundle="$build_dir/Tangara Flasher.app"
+
+# clean the slate:
+rm -rf "$bundle"
+mkdir -p "$bundle"
+
+# copy executable into bundle
+executable="$bundle/Contents/MacOS/tangaraflasher"
+mkdir -p "$(dirname "$executable")"
+cp "$build_dir/tangaraflasher" "$executable"
+
+# copy app icon
+resources="$bundle/Contents/Resources"
+icon="$resources/Tangara Flasher.png"
+mkdir -p "$resources"
+cp assets/icon.png "$icon"
+
+# write Info.plist
+cat > "$bundle/Contents/Info.plist" << EOF
+{
+    CFBundleName = tangaraflasher;
+    CFBundleDisplayName = "Tangara Flasher";
+    CFBundleIdentifier = "zone.cooltech.tangara.TangaraFlasher";
+    CFBundleVersion = "$version";
+    CFBundleShortVersionString = "$version";
+    CFBundleInfoDictionaryVersion = "6.0";
+    CFBundlePackageType = APPL;
+    CFBundleExecutable = tangaraflasher;
+    CFBundleIconFile = "Tangara Flasher.png";
+}
+EOF
+
+# copy and fix dynamic libraries
+info "bundling dylibs for distribution"
+dylibs="$bundle/Contents/libs"
+mkdir -p "$dylibs"
+dylibbundler_log="$build_dir/dylibbundler.log"
+dylibbundler \
+    --create-dir \
+    --bundle-deps \
+    --fix-file "$executable" \
+    --dest-dir "$dylibs" \
+    > "$dylibbundler_log" \
+    || die "dylibbundler failed, log saved in $dylibbundler_log"
+
+# copy licenses for everything we use into the app bundle
+info "copying licenses into app bundle"
+licenses="$bundle/Contents/Licenses"
+mkdir -p "$licenses"
+
+DYLIBBUNDLER_LOG="$dylibbundler_log" \
+    LICENSES_DIR="$licenses" \
+    BREW_CELLAR="$(brew --cellar)" \
+    ruby script/lib/extract-dylibbundler-licenses.rb
+
+# build distribution zip including Licenses at top level next to .app
+info "zipping app bundle"
+staging_dir="/tmp/tangaraflasher-build-$$"
+zip_name="tangaraflasher-macos-x86_64.zip"
+mkdir -p "$staging_dir"
+cp -R "$bundle" "$staging_dir"
+cp -R "$licenses" "$staging_dir"
+(cd "$staging_dir" && zip -r9 "$zip_name" *)
+
+# copy into dist dir
+dist_dir="dist/$version"
+mkdir -p "$dist_dir"
+mv "$staging_dir/$zip_name" "$dist_dir/$zip_name"
+
+win "zipped app bundle written to $dist_dir/$zip_name"
