@@ -58,14 +58,14 @@ fn run_flash(
 }
 
 fn flash_image(
-    port: &Tangara,
+    tangara: &Tangara,
     image: &Image,
     sender: &mpsc::Sender<FlashStatus>
 ) -> Result<(), FlashError> {
-    let interface = Interface::new(&port.serial, None, None)
+    let interface = Interface::new(tangara.serial_port(), None, None)
         .map_err(|error| FlashError::OpenInterface(format!("{}", error)))?;
 
-    let mut flasher = Flasher::connect(interface, port.usb.clone(), Some(BAUD_RATE), true)
+    let mut flasher = Flasher::connect(interface, tangara.usb_port().clone(), Some(BAUD_RATE), true)
         .map_err(FlashError::Connect)?;
 
     let mut progress = ProgressCallback {

@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+  <template class="TngWelcomePage" parent="AdwNavigationPage">
+    <property name="title">Welcome to Tangara</property>
+    <property name="child">
+      <object class="AdwToolbarView">
+        <child type="top">
+          <object class="AdwHeaderBar"/>
+        </child>
+        <property name="content">
+          <object class="AdwClamp">
+            <property name="maximum_size">400</property>
+            <child>
+              <object class="GtkBox">
+                <property name="orientation">vertical</property>
+                <property name="valign">center</property>
+                <property name="spacing">20</property>
+                <child>
+                  <object class="GtkPicture">
+                    <property name="file">resource:///zone/cooltech/tangara/companion/assets/logo.svg</property>
+                    <!-- <property name="pixel-size">400</property> -->
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkLabel">
+                    <property name="label">To begin, connect your Tangara and make sure it's switched on.</property>
+                  </object>
+                </child>
+              </object>
+            </child>
+          </object>
+        </property>
+      </object>
+    </property>
+  </template>
+</interface>

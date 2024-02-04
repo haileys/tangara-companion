@@ -1,10 +1,16 @@
+pub mod connection;
+pub mod info;
+
+use std::io;
 use std::time::Duration;
 
 use futures::{Stream, SinkExt};
-use futures::channel::mpsc;
+use futures::channel::{mpsc, oneshot};
 use gtk::glib;
-use serialport::{SerialPortInfo, UsbPortInfo, SerialPortType};
+use serialport::{SerialPortInfo, UsbPortInfo, SerialPortType, SerialPortBuilder, SerialPort, DataBits, StopBits, FlowControl, ClearBuffer};
 use thiserror::Error;
+
+use self::connection::Connection;
 
 const POLL_DURATION: Duration = Duration::from_secs(1);
 const USB_VID: u16 = 4617; // cool tech zone
@@ -12,8 +18,8 @@ const USB_PID: u16 = 8212; // Tangara
 
 #[derive(Clone)]
 pub struct Tangara {
-    pub serial: SerialPortInfo,
-    pub usb: UsbPortInfo,
+    serial: SerialPortInfo,
+    usb: UsbPortInfo,
 }
 
 #[derive(Debug, Error)]
@@ -25,8 +31,16 @@ pub enum FindTangaraError {
 }
 
 impl Tangara {
-    pub fn port_name(&self) -> &str {
+    pub fn serial_port_name(&self) -> &str {
         &self.serial.port_name
+    }
+
+    pub fn serial_port(&self) -> &SerialPortInfo {
+        &self.serial
+    }
+
+    pub fn usb_port(&self) -> &UsbPortInfo {
+        &self.usb
     }
 
     pub fn watch() -> impl Stream<Item = Result<Tangara, FindTangaraError>> {
@@ -61,5 +75,9 @@ impl Tangara {
         }
 
         Err(FindTangaraError::NoTangara)
+    }
+
+    pub fn open(&self) -> Result<Connection, connection::OpenError> {
+        Connection::open(self.serial_port())
     }
 }
