@@ -1,0 +1,58 @@
+#!/bin/bash
+### usage: build-macos [opts..]
+###
+### Cross compiles the Windows executable from a Unix host
+
+set -euo pipefail
+cd "$(dirname "$0")/.."
+source script/lib/functions.sh
+source script/lib/error.sh
+
+BUILD=release
+TARGET=x86_64-pc-windows-msvc
+
+# check for prerequisite commands
+check-command lld-link
+
+# check for gtk installation - build this on Windows with gvsbuild
+GTK_ROOT=cross/windows-x86_64/gtk-build/gtk/x64/release
+[ -d "$GTK_ROOT" ] || die "cannot find gtk installation in $GTK_ROOT"
+
+# these ones you just have to copy from a visual studio install:
+# C:\Program Files (x86)\Windows Kits\10\lib\10.0.22621.0\um\x64
+SDK_UM_LIB=cross/windows-x86_64/um
+[ -d "$SDK_UM_LIB" ] || die "cannot find windows sdk um libs in $SDK_UM_LIB"
+
+# same with these ones
+# C:\Program Files (x86)\Windows Kits\10\lib\10.0.22621.0\ucrt\x64
+SDK_UCRT_LIB=cross/windows-x86_64/ucrt
+[ -d "$SDK_UCRT_LIB" ] || die "cannot find windows sdk ucrt libs in $SDK_UCRT_LIB"
+
+# and these
+# C:\Program Files (x86)\Windows Visual Studio\2022\BuildTools\VC\Tools\MSVC\14.38.33130\lib\x64
+SDK_MSVC_LIB=cross/windows-x86_64/msvc
+[ -d "$SDK_MSVC_LIB" ] || die "cannot find windows sdk msvc libs in $SDK_MSVC_LIB"
+
+# grab version number from git
+version="$(git describe --tags)"
+info "Version $version"
+
+# pass --release to cargo if BUILD==release:
+cargo_args=()
+[[ "$BUILD" == "release" ]] && cargo_args+="--release"
+
+# set env vars we need for cross compilation
+export PKG_CONFIG_ALLOW_CROSS=1
+export PKG_CONFIG_PATH="$GTK_ROOT/lib/pkgconfig"
+
+: "${RUSTFLAGS:=""}"
+RUSTFLAGS="$RUSTFLAGS -C linker=$(which lld-link)"
+RUSTFLAGS="$RUSTFLAGS -C link-arg=/LIBPATH:$GTK_ROOT/lib"
+RUSTFLAGS="$RUSTFLAGS -C link-arg=/LIBPATH:$SDK_UM_LIB/lib"
+RUSTFLAGS="$RUSTFLAGS -C link-arg=/LIBPATH:$SDK_UCRT_LIB/lib"
+RUSTFLAGS="$RUSTFLAGS -C link-arg=/LIBPATH:$SDK_MSVC_LIB/lib"
+RUSTFLAGS="$RUSTFLAGS -C link-arg=/STACK:8000000"
+export RUSTFLAGS
+
+# do the build
+log-command cargo build --target="$TARGET" "${cargo_args[@]}"
