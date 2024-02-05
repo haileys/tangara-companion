@@ -1,13 +1,12 @@
 pub mod connection;
 pub mod info;
 
-use std::io;
 use std::time::Duration;
 
 use futures::{Stream, SinkExt};
-use futures::channel::{mpsc, oneshot};
+use futures::channel::mpsc;
 use gtk::glib;
-use serialport::{SerialPortInfo, UsbPortInfo, SerialPortType, SerialPortBuilder, SerialPort, DataBits, StopBits, FlowControl, ClearBuffer};
+use serialport::{SerialPortInfo, UsbPortInfo, SerialPortType};
 use thiserror::Error;
 
 use self::connection::Connection;
@@ -31,6 +30,7 @@ pub enum FindTangaraError {
 }
 
 impl Tangara {
+    #[allow(unused)]
     pub fn serial_port_name(&self) -> &str {
         &self.serial.port_name
     }
@@ -43,6 +43,7 @@ impl Tangara {
         &self.usb
     }
 
+    #[allow(unused)]
     pub fn watch() -> impl Stream<Item = Result<Tangara, FindTangaraError>> {
         let (mut tx, rx) = mpsc::channel(1);
 

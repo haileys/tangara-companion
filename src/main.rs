@@ -23,7 +23,9 @@ fn main() -> glib::ExitCode {
         .build();
 
     app.connect_activate(start);
-    app.run()
+
+    let args = std::env::args().collect::<Vec<_>>();
+    app.run_with_args(&args)
 }
 
 fn start(app: &adw::Application) {

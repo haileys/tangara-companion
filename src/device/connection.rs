@@ -23,6 +23,15 @@ pub struct Connection {
     tx: async_channel::Sender<Cmd>,
 }
 
+#[allow(unused)]
+#[derive(Debug, Error)]
+pub enum CommandError {
+    #[error("lost connection")]
+    Disconnected,
+    #[error("invalid response")]
+    InvalidResponse,
+}
+
 #[derive(Debug, Error)]
 pub enum ExecuteLuaError {
     #[error("lost connection")]
@@ -57,6 +66,10 @@ impl Connection {
         Ok(Connection { tx })
     }
 
+    // pub async fn execute_command(&self, command: &[&str]) -> Result<Vec<u8>, CommandError> {
+    //     let command
+    // }
+
     pub async fn eval_lua(&self, code: &str) -> Result<String, ExecuteLuaError> {
         if code.contains('\n') {
             panic!("newline in lua soure code not allowed");
@@ -74,7 +87,7 @@ impl Connection {
         let output = std::str::from_utf8(&result)
             .map_err(|_| ExecuteLuaError::InvalidUtf8)?;
 
-        let (cmd, response) = output.split_once("\r\n")
+        let (_, response) = output.split_once("\r\n")
             .ok_or(ExecuteLuaError::InvalidResponse)?;
 
         let mut response = response.to_owned();
@@ -86,6 +99,21 @@ impl Connection {
         Ok(response)
     }
 }
+
+// fn escape_command_arg(out: &mut String, arg: &str) {
+//     let need_quote = arg.contains(char::is_whitespace);
+
+//     if need_quote {
+//         out += '"';
+//     }
+
+//     for c in arg {
+//         match c {
+//             '"' => { out += "\\\"" }
+
+//         }
+//     }
+// }
 
 enum Cmd {
     ExecLua(String, oneshot::Sender<Vec<u8>>),

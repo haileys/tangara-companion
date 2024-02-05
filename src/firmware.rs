@@ -43,6 +43,7 @@ pub enum ReadImageError {
 }
 
 impl Firmware {
+    #[allow(unused)]
     pub fn open(path: &Path) -> Result<Self, OpenError> {
         let file = File::open(path).map_err(OpenError::Open)?;
         let mut zip = ZipArchive::new(file)?;
@@ -55,10 +56,12 @@ impl Firmware {
         })
     }
 
+    #[allow(unused)]
     pub fn path(&self) -> &Path {
         &self.path
     }
 
+    #[allow(unused)]
     pub fn version(&self) -> &str {
         &self.manifest.firmware.version
     }
