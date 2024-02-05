@@ -5,7 +5,9 @@ mod firmware;
 mod flash;
 mod ui;
 
-use gtk::prelude::{ApplicationExt, ApplicationExtManual, GridExt, GtkWindowExt};
+use gtk::prelude::{ApplicationExt, ApplicationExtManual, GtkWindowExt};
+
+use futures::StreamExt;
 
 use device::Tangara;
 
@@ -29,78 +31,15 @@ fn main() -> glib::ExitCode {
 }
 
 fn start(app: &adw::Application) {
-    let sidebar = sidebar();
-    let content = ui::TngWelcomePage::new();
-
-    let split = adw::NavigationSplitView::builder()
-        .sidebar(&sidebar)
-        .content(&content)
-        .build();
-
-    let window = adw::ApplicationWindow::builder()
-        .application(app)
-        .content(&split)
-        .width_request(280)
-        .height_request(200)
-        .default_width(800)
-        .default_height(600)
-        .build();
-
-    window.present();
+    let app = ui::Application::new(app);
+    app.present();
 
     glib::spawn_future_local(async move {
-        let tangara = Tangara::find().await.unwrap();
-        let connection = tangara.open().unwrap();
-        let info = device::info::get(&connection).await.unwrap();
-        println!("result -> {info:#?}");
+        let mut watch = Tangara::watch();
+        while let Some(tangara) = watch.next().await {
+            app.set_tangara(tangara);
+        }
     });
-}
-
-fn sidebar() -> adw::NavigationPage {
-    let list = gtk::ListBox::builder()
-        .css_classes(["navigation-sidebar"])
-        .build();
-
-    list.append(&sidebar_row("About", "/zone/cooltech/tangara/companion/icon-info.svg"));
-    list.append(&sidebar_row("Firmware", "/zone/cooltech/tangara/companion/icon-firmware.svg"));
-
-    let header = adw::HeaderBar::builder()
-        .build();
-
-    let view = adw::ToolbarView::builder()
-        .content(&list)
-        .build();
-
-    view.add_top_bar(&header);
-
-    let sidebar = adw::NavigationPage::builder()
-        .title("")
-        .child(&view)
-        .build();
-
-    sidebar
-}
-
-fn sidebar_row(
-    label_text: &str,
-    icon_resource: &str,
-) -> gtk::ListBoxRow {
-    let grid = gtk::Grid::builder()
-        .build();
-
-    let icon = gtk::Image::from_resource(icon_resource);
-    grid.attach(&icon, 1, 1, 1, 1);
-
-    let label = gtk::Label::builder()
-        .label(label_text)
-        .css_classes(["label"])
-        .build();
-
-    grid.attach(&label, 2, 1, 1, 1);
-
-    gtk::ListBoxRow::builder()
-        .child(&grid)
-        .build()
 }
 
 // fn about_devide(info: device::info::Info) -> adw::NavigationPage {

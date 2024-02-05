@@ -1,6 +1,7 @@
 pub mod connection;
 pub mod info;
 
+use std::rc::Rc;
 use std::time::Duration;
 
 use futures::{Stream, SinkExt};
@@ -30,7 +31,6 @@ pub enum FindTangaraError {
 }
 
 impl Tangara {
-    #[allow(unused)]
     pub fn serial_port_name(&self) -> &str {
         &self.serial.port_name
     }
@@ -43,20 +43,28 @@ impl Tangara {
         &self.usb
     }
 
-    #[allow(unused)]
-    pub fn watch() -> impl Stream<Item = Result<Tangara, FindTangaraError>> {
+    pub fn watch() -> impl Stream<Item = Option<Rc<Tangara>>> {
         let (mut tx, rx) = mpsc::channel(1);
 
         glib::spawn_future_local(async move {
-            loop {
-                let result = Self::find().await;
+            let mut current = Self::find().await.ok().map(Rc::new);
+            let _ = tx.send(current.clone()).await;
 
-                if let Err(_) = tx.send(result).await {
-                    break;
-                }
-
+            while !tx.is_closed() {
                 // TODO - see if we can subscribe to hardware events or something?
                 glib::timeout_future(POLL_DURATION).await;
+
+                let tangara = Self::find().await.ok();
+
+                let current_name = current.as_deref().map(Tangara::serial_port_name);
+                let tangara_name = tangara.as_ref().map(Tangara::serial_port_name);
+
+                if current_name == tangara_name {
+                    continue;
+                }
+
+                current = tangara.map(Rc::new);
+                let _ = tx.send(current.clone()).await;
             }
         });
 
