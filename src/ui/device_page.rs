@@ -6,6 +6,7 @@ use derive_more::Deref;
 
 use crate::device::Tangara;
 use crate::device::info;
+use crate::ui::application::DeviceViewContext;
 
 #[derive(Deref)]
 pub struct DevicePage {
@@ -14,7 +15,7 @@ pub struct DevicePage {
 }
 
 impl DevicePage {
-    pub fn new(tangara: &Tangara, info: &info::Info) -> Self {
+    pub fn new(device: DeviceViewContext, info: &info::Info) -> Self {
         let title_group = adw::PreferencesGroup::builder()
             .build();
 
@@ -23,7 +24,7 @@ impl DevicePage {
         title_picture.set_content_fit(ContentFit::ScaleDown);
         title_group.add(&title_picture);
 
-        let device_group = device_group(tangara);
+        let device_group = device_group(&device.tangara);
         let firmware_group = firmware_group(&info.firmware);
         let database_group = database_group(&info.database);
 
