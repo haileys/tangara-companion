@@ -246,6 +246,9 @@ fn flash_page(ctx: UpdateContext, firmware: Arc<Firmware>) -> adw::NavigationPag
 
         nav.pop();
         nav.push(&complete(result));
+
+        // hold on to locked until the flash has returned a result
+        drop(locked);
     });
 
     page
