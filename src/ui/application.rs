@@ -1,28 +1,30 @@
 use std::rc::Rc;
 
+use adw::prelude::BinExt;
 use derive_more::Deref;
 use gtk::prelude::GridExt;
 
 use crate::ui;
-use crate::device::Tangara;
-use crate::device::info;
+use crate::device::{self, Tangara};
 
 #[derive(Deref)]
 pub struct Application {
     #[deref]
     window: adw::ApplicationWindow,
     split: adw::NavigationSplitView,
+    sidebar: Sidebar,
+    welcome: ui::WelcomePage,
 }
 
 impl Application {
     pub fn new(app: &adw::Application) -> Self {
-        let sidebar = sidebar();
-        let content = ui::WelcomePage::new();
+        let split = adw::NavigationSplitView::new();
 
-        let split = adw::NavigationSplitView::builder()
-            .sidebar(&sidebar)
-            .content(&*content)
-            .build();
+        let sidebar = Sidebar::new();
+        split.set_sidebar(Some(&*sidebar));
+
+        let welcome = ui::WelcomePage::new();
+        split.set_content(Some(&*welcome));
 
         let window = adw::ApplicationWindow::builder()
             .application(app)
@@ -33,52 +35,78 @@ impl Application {
             .default_height(800)
             .build();
 
-        Application { window, split }
+        Application {
+            window,
+            split,
+            sidebar,
+            welcome,
+        }
     }
 
-    pub fn set_tangara(&self, tangara: Option<Rc<Tangara>>) {
-        match tangara {
-            None => {
-                let content = ui::WelcomePage::new();
-                self.split.set_content(Some(&*content));
-            }
-            Some(tangara) => {
-                let split = self.split.clone();
+    pub async fn set_tangara(&self, tangara: Option<Rc<Tangara>>) {
+        let Some(tangara) = tangara else {
+            self.sidebar.clear();
+            self.split.set_content(Some(&*self.welcome));
+            return;
+        };
 
-                glib::spawn_future_local(async move {
-                    let conn = tangara.open().unwrap();
-                    let info = info::get(&conn).await.unwrap();
-                    let content = ui::DevicePage::new(&tangara, &info);
-                    split.set_content(Some(&*content));
-                });
-            }
-        }
+        // TODO show loading spinner screen in here maybe?
+
+        let conn = tangara.open().unwrap();
+        let info = device::info::get(&conn).await.unwrap();
+        let content = ui::DevicePage::new(&tangara, &info);
+
+        self.sidebar.show();
+        self.split.set_content(Some(&*content));
     }
 }
 
-fn sidebar() -> adw::NavigationPage {
-    let list = gtk::ListBox::builder()
-        .css_classes(["navigation-sidebar"])
-        .build();
+#[derive(Deref)]
+struct Sidebar {
+    #[deref]
+    sidebar: adw::NavigationPage,
+    nav: adw::Bin,
+    device_nav: gtk::ListBox,
+}
 
-    list.append(&sidebar_row("About", "help-about-symbolic"));
-    list.append(&sidebar_row("Firmware", "software-update-available-symbolic"));
+impl Sidebar {
+    pub fn new() -> Self {
+        let device_nav = gtk::ListBox::builder()
+            .css_classes(["navigation-sidebar"])
+            .build();
 
-    let header = adw::HeaderBar::builder()
-        .build();
+        device_nav.append(&sidebar_row("Information", "help-about-symbolic"));
+        device_nav.append(&sidebar_row("Update", "software-update-available-symbolic"));
 
-    let view = adw::ToolbarView::builder()
-        .content(&list)
-        .build();
+        let nav = adw::Bin::new();
 
-    view.add_top_bar(&header);
+        let view = adw::ToolbarView::builder()
+            .content(&nav)
+            .build();
 
-    let sidebar = adw::NavigationPage::builder()
-        .title("")
-        .child(&view)
-        .build();
+        view.add_top_bar(
+            &adw::HeaderBar::builder()
+                .build());
 
-    sidebar
+        let sidebar = adw::NavigationPage::builder()
+            .title("Tangara Companion")
+            .child(&view)
+            .build();
+
+        Sidebar {
+            sidebar,
+            nav,
+            device_nav,
+        }
+    }
+
+    pub fn clear(&self) {
+        self.nav.set_child(None::<&gtk::Widget>);
+    }
+
+    pub fn show(&self) {
+        self.nav.set_child(Some(&self.device_nav));
+    }
 }
 
 fn sidebar_row(

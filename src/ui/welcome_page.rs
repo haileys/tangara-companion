@@ -1,4 +1,3 @@
-use adw::prelude::NavigationPageExt;
 use derive_more::Deref;
 use gtk::{Align, ContentFit, Orientation};
 use gtk::prelude::BoxExt;
@@ -33,6 +32,7 @@ impl WelcomePage {
             .build();
 
         let header = adw::HeaderBar::builder()
+            .show_title(false)
             .build();
 
         let view = adw::ToolbarView::builder()
@@ -43,9 +43,8 @@ impl WelcomePage {
 
         let page = adw::NavigationPage::builder()
             .title("Welcome to Tangara")
+            .child(&view)
             .build();
-
-        page.set_child(Some(&view));
 
         WelcomePage { page }
     }

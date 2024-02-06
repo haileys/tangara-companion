@@ -37,46 +37,7 @@ fn start(app: &adw::Application) {
     glib::spawn_future_local(async move {
         let mut watch = Tangara::watch();
         while let Some(tangara) = watch.next().await {
-            app.set_tangara(tangara);
+            app.set_tangara(tangara).await;
         }
     });
 }
-
-// fn about_devide(info: device::info::Info) -> adw::NavigationPage {
-//     let header = adw::HeaderBar::builder()
-//         .build();
-
-//     let image = gtk::Picture::for_resource("/zone/cooltech/tangara/companion/logo.svg");
-
-//     let box_ = gtk::Box::builder()
-//         .orientation(Orientation::Vertical)
-//         .valign(Align::Center)
-//         .spacing(32)
-//         .build();
-
-//     box_.append(&image);
-//     box_.append(&label);
-
-//     let firmware = adw::PreferencesGroup::builder()
-//         .build();
-
-//     let clamp = adw::Clamp::builder()
-//         .maximum_size(400)
-//         .child(&box_)
-//         .build();
-
-//     let view = adw::ToolbarView::builder()
-//         .content(&clamp)
-//         .build();
-
-//     view.add_top_bar(&header);
-
-//     let content = adw::NavigationPage::builder()
-//         .title("About Tangara")
-//         .child(&view)
-//         .build();
-
-//     content
-// }
-
-// fn list_row(label: &str, value: &str) -> gtk::ListBoxRow

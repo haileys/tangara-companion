@@ -1,9 +1,11 @@
+// mod update_page;
 mod application;
 mod device_page;
+// mod main_view;
 mod welcome_page;
-// mod preference_label;
 
+// pub use update_page::UpdatePage;
 pub use application::Application;
-pub use welcome_page::WelcomePage;
 pub use device_page::DevicePage;
-// pub use preference_label::ListRow;
+// pub use main_view::MainView;
+pub use welcome_page::WelcomePage;
