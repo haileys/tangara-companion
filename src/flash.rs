@@ -21,12 +21,12 @@ pub struct Flash {
     pub result: oneshot::Receiver<Result<(), FlashError>>,
 }
 
-pub fn start_flash(port: Tangara, firmware: Arc<Firmware>) -> Flash {
+pub fn start_flash(port: Arc<Tangara>, firmware: Arc<Firmware>) -> Flash {
     let (progress_tx, progress) = mpsc::channel(32);
     let (result_tx, result) = oneshot::channel();
 
     gtk::gio::spawn_blocking(move || {
-        let result = run_flash(port, &firmware, progress_tx);
+        let result = run_flash(&port, &firmware, progress_tx);
         let _ = result_tx.send(result);
     });
 
@@ -44,7 +44,7 @@ pub enum FlashError {
 }
 
 fn run_flash(
-    port: Tangara,
+    port: &Tangara,
     firmware: &Firmware,
     mut sender: mpsc::Sender<FlashStatus>,
 ) -> Result<(), FlashError> {
@@ -58,14 +58,14 @@ fn run_flash(
 }
 
 fn flash_image(
-    port: &Tangara,
+    tangara: &Tangara,
     image: &Image,
     sender: &mpsc::Sender<FlashStatus>
 ) -> Result<(), FlashError> {
-    let interface = Interface::new(&port.serial, None, None)
+    let interface = Interface::new(tangara.serial_port(), None, None)
         .map_err(|error| FlashError::OpenInterface(format!("{}", error)))?;
 
-    let mut flasher = Flasher::connect(interface, port.usb.clone(), Some(BAUD_RATE), true)
+    let mut flasher = Flasher::connect(interface, tangara.usb_port().clone(), Some(BAUD_RATE), true)
         .map_err(FlashError::Connect)?;
 
     let mut progress = ProgressCallback {

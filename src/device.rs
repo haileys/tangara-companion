@@ -1,3 +1,7 @@
+pub mod connection;
+pub mod info;
+
+use std::sync::Arc;
 use std::time::Duration;
 
 use futures::{Stream, SinkExt};
@@ -6,14 +10,16 @@ use gtk::glib;
 use serialport::{SerialPortInfo, UsbPortInfo, SerialPortType};
 use thiserror::Error;
 
+use self::connection::Connection;
+
 const POLL_DURATION: Duration = Duration::from_secs(1);
 const USB_VID: u16 = 4617; // cool tech zone
 const USB_PID: u16 = 8212; // Tangara
 
 #[derive(Clone)]
 pub struct Tangara {
-    pub serial: SerialPortInfo,
-    pub usb: UsbPortInfo,
+    serial: SerialPortInfo,
+    usb: UsbPortInfo,
 }
 
 #[derive(Debug, Error)]
@@ -25,23 +31,40 @@ pub enum FindTangaraError {
 }
 
 impl Tangara {
-    pub fn port_name(&self) -> &str {
+    pub fn serial_port_name(&self) -> &str {
         &self.serial.port_name
     }
 
-    pub fn watch() -> impl Stream<Item = Result<Tangara, FindTangaraError>> {
+    pub fn serial_port(&self) -> &SerialPortInfo {
+        &self.serial
+    }
+
+    pub fn usb_port(&self) -> &UsbPortInfo {
+        &self.usb
+    }
+
+    pub fn watch() -> impl Stream<Item = Option<Arc<Tangara>>> {
         let (mut tx, rx) = mpsc::channel(1);
 
         glib::spawn_future_local(async move {
-            loop {
-                let result = Self::find().await;
+            let mut current = Self::find().await.ok().map(Arc::new);
+            let _ = tx.send(current.clone()).await;
 
-                if let Err(_) = tx.send(result).await {
-                    break;
-                }
-
+            while !tx.is_closed() {
                 // TODO - see if we can subscribe to hardware events or something?
                 glib::timeout_future(POLL_DURATION).await;
+
+                let tangara = Self::find().await.ok();
+
+                let current_name = current.as_deref().map(Tangara::serial_port_name);
+                let tangara_name = tangara.as_ref().map(Tangara::serial_port_name);
+
+                if current_name == tangara_name {
+                    continue;
+                }
+
+                current = tangara.map(Arc::new);
+                let _ = tx.send(current.clone()).await;
             }
         });
 
@@ -61,5 +84,9 @@ impl Tangara {
         }
 
         Err(FindTangaraError::NoTangara)
+    }
+
+    pub async fn open(&self) -> Result<Connection, connection::OpenError> {
+        Connection::open(self.serial_port()).await
     }
 }

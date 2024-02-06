@@ -1,7 +1,12 @@
-/target
-/dist
 /cross
-*.glade
-*~
+/dist
+/gtk-builder
+/target
+
+*.7z
 *.bin
+*.exe
+*.glade
 *.tra
+*.zip
+*~
