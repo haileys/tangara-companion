@@ -1,10 +1,10 @@
 mod application;
-mod device_page;
+mod overview;
 mod nav;
-mod update_page;
-mod welcome_page;
+mod update;
+mod welcome;
 
 pub use application::Application;
-pub use device_page::DevicePage;
-pub use welcome_page::WelcomePage;
-pub use update_page::UpdatePage;
+pub use overview::OverviewPage;
+pub use update::UpdateFlow;
+pub use welcome::WelcomePage;

@@ -9,12 +9,12 @@ use crate::device::info;
 use crate::ui::application::DeviceViewContext;
 
 #[derive(Deref)]
-pub struct DevicePage {
+pub struct OverviewPage {
     #[deref]
     page: adw::NavigationPage,
 }
 
-impl DevicePage {
+impl OverviewPage {
     pub fn new(device: DeviceViewContext, info: &info::Info) -> Self {
         let title_group = adw::PreferencesGroup::builder()
             .build();
@@ -51,7 +51,7 @@ impl DevicePage {
 
         page.set_child(Some(&view));
 
-        DevicePage { page }
+        OverviewPage { page }
     }
 }
 

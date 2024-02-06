@@ -53,12 +53,12 @@ impl MainView {
                     .add_item(
                         "Overview",
                         "help-about-symbolic",
-                        move |device| ui::DevicePage::new(device, &info),
+                        move |device| ui::OverviewPage::new(device, &info),
                     )
                     .add_item(
                         "Firmware Update",
                         "software-update-available-symbolic",
-                        |_| ui::UpdatePage::new(),
+                        |_| ui::UpdateFlow::new(),
                     )
                     .build();
 
