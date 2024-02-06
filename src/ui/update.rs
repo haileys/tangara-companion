@@ -1,10 +1,21 @@
-use adw::prelude::{ActionRowExt, NavigationPageExt, PreferencesGroupExt, PreferencesPageExt};
+use std::sync::Arc;
+
+use adw::prelude::{ActionRowExt, PreferencesGroupExt, PreferencesPageExt};
 use derive_more::Deref;
+use futures::StreamExt;
 use glib::object::Cast;
 use glib::types::StaticType;
-use gtk::{FileDialog, FileFilter};
+use glib::WeakRef;
+use gtk::{Align, FileDialog, FileFilter, Orientation};
 use gtk::gio::{Cancellable, File};
-use gtk::prelude::WidgetExt;
+use gtk::prelude::{BoxExt, ButtonExt, FileExt, WidgetExt};
+
+use crate::firmware::Firmware;
+use crate::flash::{self, FlashError, FlashStatus};
+use crate::ui::application::DeviceContext;
+use crate::ui::label_row::LabelRow;
+use crate::ui::util::{NavPageBuilder, content_clamp};
+use crate::util::weak;
 
 #[derive(Deref)]
 pub struct UpdateFlow {
@@ -14,9 +25,13 @@ pub struct UpdateFlow {
 }
 
 impl UpdateFlow {
-    pub fn new() -> Self {
+    pub fn new(device: DeviceContext) -> Self {
         let nav = adw::NavigationView::new();
-        nav.add(&*SelectFirmwarePage::new());
+
+        nav.add(&select_firmware_page(UpdateContext {
+            device,
+            nav: weak(&nav),
+        }));
 
         let page = adw::NavigationPage::builder()
             .child(&nav)
@@ -26,39 +41,25 @@ impl UpdateFlow {
     }
 }
 
-#[derive(Deref)]
-pub struct SelectFirmwarePage {
-    #[deref]
-    page: adw::NavigationPage,
+#[derive(Clone)]
+struct UpdateContext {
+    device: DeviceContext,
+    nav: WeakRef<adw::NavigationView>,
 }
 
-impl SelectFirmwarePage {
-    pub fn new() -> Self {
-        let pref_page = adw::PreferencesPage::builder()
-            .title("Update Firmware")
-            .build();
+fn select_firmware_page(ctx: UpdateContext) -> adw::NavigationPage {
+    let page = adw::PreferencesPage::builder()
+        .title("Update Firmware")
+        .build();
 
-        pref_page.add(&select_group());
+    page.add(&select_group(ctx));
 
-        let header = adw::HeaderBar::new();
-
-        let view = adw::ToolbarView::builder()
-            .content(&pref_page)
-            .build();
-
-        view.add_top_bar(&header);
-
-        let page = adw::NavigationPage::builder()
-            .title(pref_page.title())
-            .tag("select-firmware")
-            .child(&view)
-            .build();
-
-        SelectFirmwarePage { page }
-    }
+    NavPageBuilder::clamped(&page)
+        .title(page.title().as_str())
+        .build()
 }
 
-fn select_group() -> adw::PreferencesGroup {
+fn select_group(ctx: UpdateContext) -> adw::PreferencesGroup {
     let group = adw::PreferencesGroup::new();
 
     let select_firmware = adw::ActionRow::builder()
@@ -70,7 +71,7 @@ fn select_group() -> adw::PreferencesGroup {
         .icon_name("folder-symbolic")
         .build());
 
-    select_firmware.connect_activated(|widget| {
+    select_firmware.connect_activated(move |widget| {
         let filter = FileFilter::new();
         filter.add_suffix("tra");
 
@@ -87,40 +88,215 @@ fn select_group() -> adw::PreferencesGroup {
             .modal(true)
             .build()
             .open(window.as_ref(), Cancellable::NONE, {
+                let ctx = ctx.clone();
                 move |result| {
-                    eprintln!("{result:?}");
-                }
-                // let app = app.clone();
-                // move |result| {
-                //     match result {
-                //         Ok(file) => {
-                //             let Some(path) = file.path() else {
-                //                 // no path?
-                //                 eprintln!("no path in file from file dialog");
-                //                 return;
-                //             };
+                    let Some(nav) = ctx.nav.upgrade() else { return };
 
-                //             match Firmware::open(&path) {
-                //                 Ok(firmware) => {
-                //                     app.nav.push(&firmware_page(app.clone(), FirmwarePage {
-                //                         firmware: Arc::new(firmware),
-                //                     }));
-                //                 }
-                //                 Err(error) => {
-                //                     eprintln!("read firmware error: {}", error);
-                //                 }
-                //             }
-                //         }
-                //         Err(error) => {
-                //             // TODO how do we surface this to user?
-                //             eprintln!("file dialoag error: {error:?}");
-                //         }
-                //     }
-                // }
+                    let file = match result {
+                        Ok(file) => file,
+                        Err(error) => {
+                            // TODO how do we surface this to user?
+                            eprintln!("file dialog error: {error:?}");
+                            return;
+                        }
+                    };
+
+                    let Some(path) = file.path() else {
+                        // no path?
+                        eprintln!("no path in file from file dialog");
+                        return;
+                    };
+
+                    match Firmware::open(&path) {
+                        Ok(firmware) => {
+                            let firmware = Arc::new(firmware);
+                            nav.push(&review_firmware_page(ctx.clone(), firmware));
+                        }
+                        Err(error) => {
+                            eprintln!("read firmware error: {}", error);
+                        }
+                    }
+                }
             });
     });
 
     group.add(&select_firmware);
 
     group
+}
+
+fn review_firmware_page(ctx: UpdateContext, firmware: Arc<Firmware>) -> adw::NavigationPage {
+    let intro_group = adw::PreferencesGroup::new();
+
+    let intro_label = gtk::Label::builder()
+        .label("Flashing new firmware to your Tangara will take a couple of minutes.\n\nTangara will reboot when flashing starts, and must remain plugged in until flashing is complete.")
+        .wrap(true)
+        .build();
+
+    intro_group.add(&intro_label);
+
+    let details_group = adw::PreferencesGroup::new();
+
+    details_group.add(&*LabelRow::new("Firmware", &firmware.path().display().to_string()));
+    details_group.add(&*LabelRow::new("Version", firmware.version()));
+
+    let flash_group = adw::PreferencesGroup::new();
+
+    let flash_button = gtk::Button::builder()
+        .label("Flash!")
+        .build();
+
+    flash_button.connect_clicked({
+        let ctx = ctx.clone();
+        let firmware = firmware.clone();
+        move |button| {
+            let Some(nav) = ctx.nav.upgrade() else { return };
+
+            nav.pop();
+            nav.push(&flash_page(ctx.clone(), firmware.clone()));
+        }
+    });
+
+    flash_group.add(&flash_button);
+
+    let page = adw::PreferencesPage::builder()
+        .title("Review Firmware")
+        .build();
+
+    page.add(&intro_group);
+    page.add(&details_group);
+    page.add(&flash_group);
+
+    NavPageBuilder::clamped(&page)
+        .title(page.title().as_str())
+        .build()
+}
+
+fn flash_page(ctx: UpdateContext, firmware: Arc<Firmware>) -> adw::NavigationPage {
+    let box_ = gtk::Box::builder()
+        .orientation(Orientation::Vertical)
+        .valign(Align::Center)
+        .spacing(20)
+        .build();
+
+    box_.append(&gtk::Label::builder()
+        .label("Do not disconnect Tangara")
+        .build());
+
+    let progress_bar = gtk::ProgressBar::builder()
+        .build();
+
+    let status_label = gtk::Label::builder()
+        .build();
+
+    box_.append(&progress_bar);
+    box_.append(&status_label);
+
+    let page = NavPageBuilder::clamped(&box_)
+        .title("Flashing Tangara")
+        .header(adw::HeaderBar::builder()
+            .show_back_button(false)
+            .show_end_title_buttons(false)
+            .show_start_title_buttons(false)
+            .build())
+        .build();
+
+    // lock the app global navigation while we're flashing
+    let locked = ctx.device.nav.lock();
+
+    // start flash now UI is built
+    let mut flash = flash::start_flash(ctx.device.tangara.clone(), firmware);
+
+    // progress handler
+    glib::spawn_future_local(async move {
+        let mut current_image = None;
+        while let Some(progress) = flash.progress.next().await {
+            match progress {
+                FlashStatus::StartingFlash => {
+                    status_label.set_label("Starting flash")
+                }
+                FlashStatus::Image(image) => {
+                    status_label.set_label(&format!("Writing {image}..."));
+                    progress_bar.set_fraction(0.0);
+                    current_image = Some(image);
+                }
+                FlashStatus::Progress(written, total) => {
+                    if total != 0 {
+                        let progress = written as f64 / total as f64;
+                        progress_bar.set_fraction(progress);
+                    }
+
+                    if let Some(image) = &current_image {
+                        status_label.set_label(&format!("Writing {image}... block {written}/{total}"));
+                    }
+                }
+            }
+        }
+    });
+
+    // result channel
+    glib::spawn_future_local(async move {
+        let Some(nav) = ctx.nav.upgrade() else { return };
+
+        let result = match flash.result.await {
+            Ok(Ok(())) => Ok(()),
+            Ok(Err(e)) => Err(Some(e)),
+            Err(_) => Err(None),
+        };
+
+        nav.pop();
+        nav.push(&complete(result));
+    });
+
+    page
+}
+
+fn complete(message: Result<(), Option<FlashError>>) -> adw::NavigationPage {
+    let layout = gtk::Box::builder()
+        .orientation(Orientation::Vertical)
+        .valign(Align::Center)
+        .spacing(20)
+        .build();
+
+    let icon = gtk::Label::builder()
+        .label(match &message {
+            Ok(()) => "✅",
+            Err(_) => "⚠️",
+        })
+        .build();
+
+    if let Some(mut font) = icon.pango_context().font_description() {
+        font.set_size(36 * gtk::pango::ffi::PANGO_SCALE);
+        icon.pango_context().set_font_description(Some(&font));
+    }
+
+    layout.append(&icon);
+
+    let text = gtk::Label::builder()
+        .label(match &message {
+            Ok(()) => "Please enjoy your freshly updated Tangara".to_owned(),
+            Err(Some(error)) => format!("{error}"),
+            Err(None) => "Unknown error".to_owned(),
+        })
+        .build();
+
+    layout.append(&text);
+
+    let view = adw::ToolbarView::builder()
+        .content(&layout)
+        .build();
+
+    let header = adw::HeaderBar::builder()
+        .show_back_button(true)
+        .build();
+
+    view.add_top_bar(&header);
+
+    adw::NavigationPage::builder()
+        .child(&view)
+        .title(match &message {
+            Ok(()) => "Flash complete",
+            Err(_) => "Flash failed",
+        })
+        .build()
 }

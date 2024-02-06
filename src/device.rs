@@ -1,7 +1,7 @@
 pub mod connection;
 pub mod info;
 
-use std::rc::Rc;
+use std::sync::Arc;
 use std::time::Duration;
 
 use futures::{Stream, SinkExt};
@@ -43,11 +43,11 @@ impl Tangara {
         &self.usb
     }
 
-    pub fn watch() -> impl Stream<Item = Option<Rc<Tangara>>> {
+    pub fn watch() -> impl Stream<Item = Option<Arc<Tangara>>> {
         let (mut tx, rx) = mpsc::channel(1);
 
         glib::spawn_future_local(async move {
-            let mut current = Self::find().await.ok().map(Rc::new);
+            let mut current = Self::find().await.ok().map(Arc::new);
             let _ = tx.send(current.clone()).await;
 
             while !tx.is_closed() {
@@ -63,7 +63,7 @@ impl Tangara {
                     continue;
                 }
 
-                current = tangara.map(Rc::new);
+                current = tangara.map(Arc::new);
                 let _ = tx.send(current.clone()).await;
             }
         });

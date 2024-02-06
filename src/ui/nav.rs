@@ -1,6 +1,7 @@
 use std::cell::Cell;
 use std::ops::Deref;
 use std::rc::{Rc, Weak};
+use std::sync::Arc;
 
 use adw::prelude::BinExt;
 use derive_more::Deref;
@@ -10,7 +11,7 @@ use gtk::prelude::{GridExt, WidgetExt, ListBoxRowExt};
 use crate::device::{self, Tangara};
 use crate::ui;
 
-use super::application::DeviceViewContext;
+use super::application::DeviceContext;
 
 #[derive(Deref)]
 pub struct MainView {
@@ -39,7 +40,7 @@ impl MainView {
         }
     }
 
-    pub async fn set_device(&self, device: Option<Rc<Tangara>>) {
+    pub async fn set_device(&self, device: Option<Arc<Tangara>>) {
         match device {
             None => {
                 self.sidebar.device_nav.set_child(None::<&gtk::Widget>);
@@ -58,7 +59,7 @@ impl MainView {
                     .add_item(
                         "Firmware Update",
                         "software-update-available-symbolic",
-                        |_| ui::UpdateFlow::new(),
+                        |device| ui::UpdateFlow::new(device),
                     )
                     .build();
 
@@ -120,18 +121,18 @@ impl NavController {
 
 struct DeviceNavBuilder {
     list: gtk::ListBox,
-    actions: Vec<Box<dyn Fn(DeviceViewContext) -> adw::NavigationPage>>,
-    context: DeviceViewContext,
+    actions: Vec<Box<dyn Fn(DeviceContext) -> adw::NavigationPage>>,
+    context: DeviceContext,
     controller: NavController,
 }
 
 impl DeviceNavBuilder {
-    pub fn new(tangara: Rc<Tangara>, controller: NavController) -> Self {
+    pub fn new(tangara: Arc<Tangara>, controller: NavController) -> Self {
         let list = gtk::ListBox::builder()
             .css_classes(["navigation-sidebar"])
             .build();
 
-        let context = DeviceViewContext {
+        let context = DeviceContext {
             tangara,
             nav: DeviceNavController::new(&list),
         };
@@ -146,7 +147,7 @@ impl DeviceNavBuilder {
 
     pub fn add_item<Func, Page>(mut self, label: &str, icon: &str, action: Func) -> Self
         where
-            Func: Fn(DeviceViewContext) -> Page + 'static,
+            Func: Fn(DeviceContext) -> Page + 'static,
             Page: Deref<Target = adw::NavigationPage>,
     {
         self.list.append(&sidebar_row(label, icon));

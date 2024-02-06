@@ -4,6 +4,7 @@ mod device;
 mod firmware;
 mod flash;
 mod ui;
+mod util;
 
 use gtk::prelude::{ApplicationExt, ApplicationExtManual, GtkWindowExt};
 

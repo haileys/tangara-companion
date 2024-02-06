@@ -1,4 +1,5 @@
 use std::rc::Rc;
+use std::sync::Arc;
 
 use derive_more::Deref;
 
@@ -15,8 +16,8 @@ pub struct Application {
 }
 
 #[derive(Clone)]
-pub struct DeviceViewContext {
-    pub tangara: Rc<Tangara>,
+pub struct DeviceContext {
+    pub tangara: Arc<Tangara>,
     pub nav: Rc<ui::nav::DeviceNavController>,
 }
 
@@ -39,7 +40,7 @@ impl Application {
         }
     }
 
-    pub async fn set_tangara(&self, tangara: Option<Rc<Tangara>>) {
+    pub async fn set_tangara(&self, tangara: Option<Arc<Tangara>>) {
         self.view.set_device(tangara).await
     }
 }

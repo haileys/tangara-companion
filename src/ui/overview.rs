@@ -1,12 +1,13 @@
-use adw::prelude::{ActionRowExt, NavigationPageExt, PreferencesGroupExt, PreferencesPageExt};
-use gtk::pango::EllipsizeMode;
-use gtk::{Align, ContentFit};
+use adw::prelude::{NavigationPageExt, PreferencesGroupExt, PreferencesPageExt};
+use gtk::ContentFit;
 
 use derive_more::Deref;
 
 use crate::device::Tangara;
 use crate::device::info;
-use crate::ui::application::DeviceViewContext;
+use crate::ui::application::DeviceContext;
+
+use super::label_row::LabelRow;
 
 #[derive(Deref)]
 pub struct OverviewPage {
@@ -15,7 +16,7 @@ pub struct OverviewPage {
 }
 
 impl OverviewPage {
-    pub fn new(device: DeviceViewContext, info: &info::Info) -> Self {
+    pub fn new(device: DeviceContext, info: &info::Info) -> Self {
         let title_group = adw::PreferencesGroup::builder()
             .build();
 
@@ -59,7 +60,7 @@ fn device_group(tangara: &Tangara) -> adw::PreferencesGroup {
     let group = adw::PreferencesGroup::builder()
         .build();
 
-    let port = PreferenceLabel::new("Serial port", tangara.serial_port_name());
+    let port = LabelRow::new("Serial port", tangara.serial_port_name());
     group.add(&*port);
 
     group
@@ -70,13 +71,13 @@ fn firmware_group(firmware: &info::Firmware) -> adw::PreferencesGroup {
         .title("Firmware")
         .build();
 
-    let version = PreferenceLabel::new("Version", &firmware.version);
+    let version = LabelRow::new("Version", &firmware.version);
     group.add(&*version);
 
-    let samd = PreferenceLabel::new("SAMD", &firmware.samd);
+    let samd = LabelRow::new("SAMD", &firmware.samd);
     group.add(&*samd);
 
-    let collation = PreferenceLabel::new("Collation", &firmware.collation);
+    let collation = LabelRow::new("Collation", &firmware.collation);
     group.add(&*collation);
 
     group
@@ -87,47 +88,15 @@ fn database_group(database: &info::Database) -> adw::PreferencesGroup {
         .title("Database")
         .build();
 
-    let schema = PreferenceLabel::new("Schema version", &database.schema_version);
+    let schema = LabelRow::new("Schema version", &database.schema_version);
     group.add(&*schema);
 
     let disk_size = database.disk_size.map(render_size);
     let disk_size = disk_size.as_deref().unwrap_or("unknown");
-    let size = PreferenceLabel::new("Size on disk", disk_size);
+    let size = LabelRow::new("Size on disk", disk_size);
     group.add(&*size);
 
     group
-}
-
-#[derive(Deref)]
-struct PreferenceLabel {
-    #[deref]
-    row: adw::ActionRow,
-    #[allow(unused)]
-    label: gtk::Label,
-}
-
-impl PreferenceLabel {
-    pub fn new(title: &str, value: &str) -> Self {
-        let label = gtk::Label::builder()
-            .valign(Align::Center)
-            .ellipsize(EllipsizeMode::End)
-            .css_classes(["dim-label"])
-            .label(value)
-            .build();
-
-        let row = adw::ActionRow::builder()
-            .title(title)
-            .build();
-
-        row.add_suffix(&label);
-
-        PreferenceLabel { row, label }
-    }
-
-    #[allow(unused)]
-    pub fn set_value(&self, value: &str) {
-        self.label.set_label(value);
-    }
 }
 
 fn render_size(bytes: u64) -> String {
