@@ -13,10 +13,12 @@ static CONSOLE_PROMPT: &[u8] = " → ".as_bytes();
 
 #[derive(Debug, Error)]
 pub enum OpenError {
-    #[error("io: {0}")]
-    Io(#[from] io::Error),
-    #[error("port: {0}")]
+    #[error("opening serial port: {0}")]
     Port(#[from] serialport::Error),
+    #[error(transparent)]
+    Connection(#[from] ConnectionError),
+    #[error("connection thread terminated unexpectedly")]
+    Canceled(#[from] oneshot::Canceled),
 }
 
 pub struct Connection {
@@ -43,7 +45,7 @@ pub enum ExecuteLuaError {
 }
 
 impl Connection {
-    pub fn open(serial_port: &SerialPortInfo) -> Result<Connection, OpenError> {
+    pub async fn open(serial_port: &SerialPortInfo) -> Result<Connection, OpenError> {
         let port = serialport::new(&serial_port.port_name, CONSOLE_BAUD_RATE)
             .data_bits(DataBits::Eight)
             .stop_bits(StopBits::One)
@@ -51,17 +53,7 @@ impl Connection {
             .flow_control(FlowControl::Hardware)
             .open()?;
 
-        let (tx, rx) = async_channel::bounded(32);
-
-        std::thread::spawn(move || {
-            match connection_thread(rx, port) {
-                Ok(()) => {}
-                Err(error) => {
-                    // TODO signal this upwards with like an event or something
-                    eprintln!("error running tangara connection: {error}");
-                }
-            }
-        });
+        let tx = start_connection(port).await?;
 
         Ok(Connection { tx })
     }
@@ -120,21 +112,48 @@ enum Cmd {
 }
 
 #[derive(Debug, Error)]
-enum ConnectionError {
-    #[error("io: {0}")]
+pub enum ConnectionError {
+    #[error("io error: {0}")]
     Io(#[from] io::Error),
-    #[error("port: {0}")]
+    #[error("port error: {0}")]
     Port(#[from] serialport::Error),
     #[error("syncing to console: {0}")]
     Sync(#[from] SyncError),
 }
 
-fn connection_thread(
+async fn start_connection(mut port: Box<dyn SerialPort>)
+    -> Result<async_channel::Sender<Cmd>, OpenError>
+{
+    let (retn_tx, retn_rx) = oneshot::channel();
+
+    std::thread::spawn(move || {
+        match sync(&mut port) {
+            Ok(()) => {}
+            Err(error) => {
+                let _ = retn_tx.send(Err(ConnectionError::Sync(error)));
+                return;
+            }
+        }
+
+        let (tx, rx) = async_channel::bounded(32);
+        let _ = retn_tx.send(Ok(tx));
+
+        match run_connection(rx, port) {
+            Ok(()) => {}
+            Err(error) => {
+                // TODO signal this upwards with like an event or something
+                eprintln!("error running tangara connection: {error}");
+            }
+        }
+    });
+
+    Ok(retn_rx.await??)
+}
+
+fn run_connection(
     cmd_rx: async_channel::Receiver<Cmd>,
     mut port: Box<dyn SerialPort>,
 ) -> Result<(), ConnectionError> {
-    sync(&mut port)?;
-
     while let Some(cmd) = cmd_rx.recv_blocking().ok() {
         match cmd {
             Cmd::ExecLua(code, ret) => {
@@ -167,10 +186,10 @@ fn connection_thread(
 }
 
 #[derive(Debug, Error)]
-enum SyncError {
-    #[error("read: {0}")]
-    Read(#[from] io::Error),
-    #[error("port: {0}")]
+pub enum SyncError {
+    #[error("io error: {0}")]
+    Io(#[from] io::Error),
+    #[error("port error: {0}")]
     Port(#[from] serialport::Error),
     #[error("unexpected eof")]
     Eof,

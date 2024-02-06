@@ -8,7 +8,7 @@ use derive_more::Deref;
 use glib::WeakRef;
 use gtk::prelude::{GridExt, WidgetExt, ListBoxRowExt};
 
-use crate::device::{self, Tangara};
+use crate::device::Tangara;
 use crate::ui;
 
 use super::application::DeviceContext;
@@ -47,14 +47,11 @@ impl MainView {
                 self.split.set_content(Some(&*ui::WelcomePage::new()));
             }
             Some(tangara) => {
-                let conn = tangara.open().unwrap();
-                let info = device::info::get(&conn).await.unwrap();
-
                 let list = DeviceNavBuilder::new(tangara, self.controller.clone())
                     .add_item(
                         "Overview",
                         "help-about-symbolic",
-                        move |device| ui::OverviewPage::new(device, &info),
+                        move |device| ui::OverviewPage::new(device),
                     )
                     .add_item(
                         "Firmware Update",

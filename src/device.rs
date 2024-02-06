@@ -86,7 +86,7 @@ impl Tangara {
         Err(FindTangaraError::NoTangara)
     }
 
-    pub fn open(&self) -> Result<Connection, connection::OpenError> {
-        Connection::open(self.serial_port())
+    pub async fn open(&self) -> Result<Connection, connection::OpenError> {
+        Connection::open(self.serial_port()).await
     }
 }

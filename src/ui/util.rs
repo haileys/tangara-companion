@@ -1,4 +1,6 @@
 use glib::object::IsA;
+use gtk::prelude::BoxExt;
+use gtk::Align;
 
 pub struct NavPageBuilder {
     view: adw::ToolbarView,
@@ -43,4 +45,19 @@ pub fn content_clamp(object: &impl IsA<gtk::Widget>) -> adw::Clamp {
         .maximum_size(600)
         .child(object)
         .build()
+}
+
+pub fn spinner_content() -> gtk::Box {
+    let box_ = gtk::Box::builder()
+        .halign(Align::Center)
+        .valign(Align::Center)
+        .build();
+
+    let spinner = gtk::Spinner::builder()
+        .spinning(true)
+        .build();
+
+    box_.append(&spinner);
+
+    box_
 }

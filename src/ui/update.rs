@@ -14,14 +14,13 @@ use crate::firmware::Firmware;
 use crate::flash::{self, FlashError, FlashStatus};
 use crate::ui::application::DeviceContext;
 use crate::ui::label_row::LabelRow;
-use crate::ui::util::{NavPageBuilder, content_clamp};
+use crate::ui::util::NavPageBuilder;
 use crate::util::weak;
 
 #[derive(Deref)]
 pub struct UpdateFlow {
     #[deref]
     page: adw::NavigationPage,
-    nav: adw::NavigationView,
 }
 
 impl UpdateFlow {
@@ -37,7 +36,7 @@ impl UpdateFlow {
             .child(&nav)
             .build();
 
-        UpdateFlow { page, nav }
+        UpdateFlow { page }
     }
 }
 
@@ -149,7 +148,7 @@ fn review_firmware_page(ctx: UpdateContext, firmware: Arc<Firmware>) -> adw::Nav
     flash_button.connect_clicked({
         let ctx = ctx.clone();
         let firmware = firmware.clone();
-        move |button| {
+        move |_| {
             let Some(nav) = ctx.nav.upgrade() else { return };
 
             nav.pop();

@@ -2,12 +2,15 @@ use adw::prelude::{NavigationPageExt, PreferencesGroupExt, PreferencesPageExt};
 use gtk::ContentFit;
 
 use derive_more::Deref;
+use thiserror::Error;
 
+use crate::device;
 use crate::device::Tangara;
 use crate::device::info;
 use crate::ui::application::DeviceContext;
 
 use super::label_row::LabelRow;
+use super::util::spinner_content;
 
 #[derive(Deref)]
 pub struct OverviewPage {
@@ -16,44 +19,80 @@ pub struct OverviewPage {
 }
 
 impl OverviewPage {
-    pub fn new(device: DeviceContext, info: &info::Info) -> Self {
-        let title_group = adw::PreferencesGroup::builder()
-            .build();
-
-        let title_picture = gtk::Picture::for_resource("/zone/cooltech/tangara/companion/assets/logo.svg");
-        title_picture.set_can_shrink(false);
-        title_picture.set_content_fit(ContentFit::ScaleDown);
-        title_group.add(&title_picture);
-
-        let device_group = device_group(&device.tangara);
-        let firmware_group = firmware_group(&info.firmware);
-        let database_group = database_group(&info.database);
-
-        let pref_page = adw::PreferencesPage::builder()
-            .title("Device Information")
-            .build();
-
-        pref_page.add(&title_group);
-        pref_page.add(&device_group);
-        pref_page.add(&firmware_group);
-        pref_page.add(&database_group);
-
+    pub fn new(device: DeviceContext) -> Self {
         let header = adw::HeaderBar::new();
 
         let view = adw::ToolbarView::builder()
-            .content(&pref_page)
+            .content(&spinner_content())
             .build();
 
         view.add_top_bar(&header);
 
         let page = adw::NavigationPage::builder()
-            .title(pref_page.title())
+            .title("Overview")
             .build();
 
         page.set_child(Some(&view));
 
+        glib::spawn_future_local(async move {
+            match fetch_info(&device.tangara).await {
+                Ok(info) => {
+                    let content = show_info(device.clone(), &info);
+                    view.set_content(Some(&content));
+                }
+                Err(error) => {
+                    let content = adw::StatusPage::builder()
+                        .icon_name("dialog-warning-symbolic")
+                        .title("Error communicating with Tangara")
+                        .description(format!("{error}"))
+                        .build();
+
+                    view.set_content(Some(&content));
+                }
+            }
+        });
+
         OverviewPage { page }
     }
+}
+
+#[derive(Debug, Error)]
+enum FetchInfoError {
+    #[error("connecting to device: {0}")]
+    Open(#[from] device::connection::OpenError),
+    #[error("querying device info: {0}")]
+    Query(#[from] device::info::InfoError),
+}
+
+async fn fetch_info(tangara: &Tangara) -> Result<device::info::Info, FetchInfoError> {
+    let conn = tangara.open().await?;
+    let info = device::info::get(&conn).await?;
+    Ok(info)
+}
+
+fn show_info(device: DeviceContext, info: &device::info::Info) -> adw::PreferencesPage {
+    let title_group = adw::PreferencesGroup::builder()
+        .build();
+
+    let title_picture = gtk::Picture::for_resource("/zone/cooltech/tangara/companion/assets/logo.svg");
+    title_picture.set_can_shrink(false);
+    title_picture.set_content_fit(ContentFit::ScaleDown);
+    title_group.add(&title_picture);
+
+    let device_group = device_group(&device.tangara);
+    let firmware_group = firmware_group(&info.firmware);
+    let database_group = database_group(&info.database);
+
+    let pref_page = adw::PreferencesPage::builder()
+        .title("Device Information")
+        .build();
+
+    pref_page.add(&title_group);
+    pref_page.add(&device_group);
+    pref_page.add(&firmware_group);
+    pref_page.add(&database_group);
+
+    pref_page
 }
 
 fn device_group(tangara: &Tangara) -> adw::PreferencesGroup {
