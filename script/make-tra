@@ -9,8 +9,7 @@
 ###   --lua <path>            Path to lua code binary, defaults to lua.bin
 
 set -euo pipefail
-cd "$(dirname "$0")/.."
-source script/lib/functions.sh
+source "$(dirname "$0")/../script/lib/functions.sh"
 
 # read command line options
 TANGARA_BIN=tangara.bin
