@@ -8,8 +8,6 @@ use derive_more::Deref;
 pub struct LabelRow {
     #[deref]
     row: adw::ActionRow,
-    #[allow(unused)]
-    label: gtk::Label,
 }
 
 impl LabelRow {
@@ -27,11 +25,6 @@ impl LabelRow {
 
         row.add_suffix(&label);
 
-        LabelRow { row, label }
-    }
-
-    #[allow(unused)]
-    pub fn set_value(&self, value: &str) {
-        self.label.set_label(value);
+        LabelRow { row }
     }
 }

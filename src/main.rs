@@ -12,12 +12,6 @@ use futures::StreamExt;
 
 use device::Tangara;
 
-#[allow(unused)]
-use firmware::Firmware;
-
-#[allow(unused)]
-use flash::{FlashStatus, FlashError, Flash};
-
 const APP_ID: &str = "zone.cooltech.tangara.Companion";
 
 fn main() -> glib::ExitCode {

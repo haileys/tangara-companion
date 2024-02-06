@@ -192,7 +192,6 @@ impl DeviceNavController {
         })
     }
 
-    #[allow(unused)]
     pub fn lock(self: Rc<Self>) -> DeviceNavLocked {
         let Some(list) = self.list.upgrade() else {
             return DeviceNavLocked { nav: Weak::new() };

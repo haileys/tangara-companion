@@ -1585,7 +1585,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "tangaraflasher"
+name = "tangara-companion"
 version = "0.2.0"
 dependencies = [
  "async-channel",
