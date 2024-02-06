@@ -254,51 +254,26 @@ fn flash_page(ctx: UpdateContext, firmware: Arc<Firmware>) -> adw::NavigationPag
 }
 
 fn complete(message: Result<(), Option<FlashError>>) -> adw::NavigationPage {
-    let layout = gtk::Box::builder()
-        .orientation(Orientation::Vertical)
-        .valign(Align::Center)
-        .spacing(20)
-        .build();
+    let status_page = match message {
+        Ok(()) => adw::StatusPage::builder()
+            .icon_name("breeze-status-success")
+            .title("Flash complete")
+            .description("Please enjoy your freshly updated Tangara")
+            .build(),
+        Err(error) => adw::StatusPage::builder()
+            .icon_name("computer-fail-symbolic")
+            .title("Flash failed")
+            .description(match error {
+                Some(error) => format!("{error}"),
+                None => "Unknown error".to_string(),
+            })
+            .build()
+    };
 
-    let icon = gtk::Label::builder()
-        .label(match &message {
-            Ok(()) => "✅",
-            Err(_) => "⚠️",
-        })
-        .build();
-
-    if let Some(mut font) = icon.pango_context().font_description() {
-        font.set_size(36 * gtk::pango::ffi::PANGO_SCALE);
-        icon.pango_context().set_font_description(Some(&font));
-    }
-
-    layout.append(&icon);
-
-    let text = gtk::Label::builder()
-        .label(match &message {
-            Ok(()) => "Please enjoy your freshly updated Tangara".to_owned(),
-            Err(Some(error)) => format!("{error}"),
-            Err(None) => "Unknown error".to_owned(),
-        })
-        .build();
-
-    layout.append(&text);
-
-    let view = adw::ToolbarView::builder()
-        .content(&layout)
-        .build();
-
-    let header = adw::HeaderBar::builder()
-        .show_back_button(true)
-        .build();
-
-    view.add_top_bar(&header);
-
-    adw::NavigationPage::builder()
-        .child(&view)
-        .title(match &message {
-            Ok(()) => "Flash complete",
-            Err(_) => "Flash failed",
-        })
+    NavPageBuilder::clamped(&status_page)
+        .title(status_page.title().as_str())
+        .header(adw::HeaderBar::builder()
+            .show_title(false)
+            .build())
         .build()
 }

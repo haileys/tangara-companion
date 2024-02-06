@@ -42,7 +42,7 @@ impl OverviewPage {
                 }
                 Err(error) => {
                     let content = adw::StatusPage::builder()
-                        .icon_name("dialog-warning-symbolic")
+                        .icon_name("computer-fail-symbolic")
                         .title("Error communicating with Tangara")
                         .description(format!("{error}"))
                         .build();

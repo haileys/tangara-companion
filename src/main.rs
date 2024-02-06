@@ -12,7 +12,7 @@ use futures::StreamExt;
 
 use device::Tangara;
 
-const APP_ID: &str = "zone.cooltech.tangara.Companion";
+const APP_ID: &str = "zone.cooltech.tangara.companion";
 
 fn main() -> glib::ExitCode {
     let app = adw::Application::builder()

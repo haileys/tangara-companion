@@ -34,6 +34,11 @@ impl Application {
             .default_height(800)
             .build();
 
+        if let Some(display) = gtk::gdk::Display::default() {
+            let theme = gtk::IconTheme::for_display(&display);
+            theme.add_resource_path("/zone/cooltech/tangara/companion/icons");
+        }
+
         Application {
             window,
             view,
