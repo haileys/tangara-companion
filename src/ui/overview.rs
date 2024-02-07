@@ -1,7 +1,6 @@
 use adw::prelude::{NavigationPageExt, PreferencesGroupExt, PreferencesPageExt};
 use gtk::ContentFit;
 
-use derive_more::Deref;
 use thiserror::Error;
 
 use crate::device;
@@ -12,48 +11,40 @@ use crate::ui::application::DeviceContext;
 use super::label_row::LabelRow;
 use super::util::spinner_content;
 
-#[derive(Deref)]
-pub struct OverviewPage {
-    #[deref]
-    page: adw::NavigationPage,
-}
+pub fn page(device: DeviceContext) -> adw::NavigationPage {
+    let header = adw::HeaderBar::new();
 
-impl OverviewPage {
-    pub fn new(device: DeviceContext) -> Self {
-        let header = adw::HeaderBar::new();
+    let view = adw::ToolbarView::builder()
+        .content(&spinner_content())
+        .build();
 
-        let view = adw::ToolbarView::builder()
-            .content(&spinner_content())
-            .build();
+    view.add_top_bar(&header);
 
-        view.add_top_bar(&header);
+    let page = adw::NavigationPage::builder()
+        .title("Overview")
+        .build();
 
-        let page = adw::NavigationPage::builder()
-            .title("Overview")
-            .build();
+    page.set_child(Some(&view));
 
-        page.set_child(Some(&view));
-
-        glib::spawn_future_local(async move {
-            match fetch_info(&device.tangara).await {
-                Ok(info) => {
-                    let content = show_info(device.clone(), &info);
-                    view.set_content(Some(&content));
-                }
-                Err(error) => {
-                    let content = adw::StatusPage::builder()
-                        .icon_name("computer-fail-symbolic")
-                        .title("Error communicating with Tangara")
-                        .description(format!("{error}"))
-                        .build();
-
-                    view.set_content(Some(&content));
-                }
+    glib::spawn_future_local(async move {
+        match fetch_info(&device.tangara).await {
+            Ok(info) => {
+                let content = show_info(device.clone(), &info);
+                view.set_content(Some(&content));
             }
-        });
+            Err(error) => {
+                let content = adw::StatusPage::builder()
+                    .icon_name("computer-fail-symbolic")
+                    .title("Error communicating with Tangara")
+                    .description(format!("{error}"))
+                    .build();
 
-        OverviewPage { page }
-    }
+                view.set_content(Some(&content));
+            }
+        }
+    });
+
+    page
 }
 
 #[derive(Debug, Error)]

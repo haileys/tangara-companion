@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
 use adw::prelude::{ActionRowExt, PreferencesGroupExt, PreferencesPageExt};
-use derive_more::Deref;
 use futures::StreamExt;
 use glib::object::Cast;
 use glib::types::StaticType;
@@ -17,27 +16,17 @@ use crate::ui::label_row::LabelRow;
 use crate::ui::util::NavPageBuilder;
 use crate::util::weak;
 
-#[derive(Deref)]
-pub struct UpdateFlow {
-    #[deref]
-    page: adw::NavigationPage,
-}
+pub fn flow(device: DeviceContext) -> adw::NavigationPage {
+    let nav = adw::NavigationView::new();
 
-impl UpdateFlow {
-    pub fn new(device: DeviceContext) -> Self {
-        let nav = adw::NavigationView::new();
+    nav.add(&select_firmware_page(UpdateContext {
+        device,
+        nav: weak(&nav),
+    }));
 
-        nav.add(&select_firmware_page(UpdateContext {
-            device,
-            nav: weak(&nav),
-        }));
-
-        let page = adw::NavigationPage::builder()
-            .child(&nav)
-            .build();
-
-        UpdateFlow { page }
-    }
+    adw::NavigationPage::builder()
+        .child(&nav)
+        .build()
 }
 
 #[derive(Clone)]

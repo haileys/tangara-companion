@@ -1,5 +1,4 @@
 use std::cell::Cell;
-use std::ops::Deref;
 use std::rc::{Rc, Weak};
 use std::sync::Arc;
 
@@ -29,9 +28,7 @@ impl MainView {
 
         let sidebar = Sidebar::new();
         split.set_sidebar(Some(&*sidebar));
-
-        let welcome = ui::WelcomePage::new();
-        split.set_content(Some(&*welcome));
+        split.set_content(Some(&ui::welcome::page()));
 
         MainView {
             split,
@@ -44,19 +41,19 @@ impl MainView {
         match device {
             None => {
                 self.sidebar.device_nav.set_child(None::<&gtk::Widget>);
-                self.split.set_content(Some(&*ui::WelcomePage::new()));
+                self.split.set_content(Some(&ui::welcome::page()));
             }
             Some(tangara) => {
                 let list = DeviceNavBuilder::new(tangara, self.controller.clone())
                     .add_item(
                         "Overview",
                         "help-about-symbolic",
-                        move |device| ui::OverviewPage::new(device),
+                        move |device| ui::overview::page(device),
                     )
                     .add_item(
                         "Firmware Update",
                         "software-update-available-symbolic",
-                        |device| ui::UpdateFlow::new(device),
+                        |device| ui::update::flow(device),
                     )
                     .build();
 
@@ -145,10 +142,10 @@ impl DeviceNavBuilder {
     pub fn add_item<Func, Page>(mut self, label: &str, icon: &str, action: Func) -> Self
         where
             Func: Fn(DeviceContext) -> Page + 'static,
-            Page: Deref<Target = adw::NavigationPage>,
+            Page: Into<adw::NavigationPage>,
     {
         self.list.append(&sidebar_row(label, icon));
-        self.actions.push(Box::new(move |ctx| action(ctx).deref().clone()));
+        self.actions.push(Box::new(move |ctx| action(ctx).into()));
         self
     }
 
