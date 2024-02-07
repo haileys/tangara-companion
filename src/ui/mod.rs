@@ -3,6 +3,7 @@ mod label_row;
 mod lua;
 mod nav;
 mod overview;
+mod settings;
 mod update;
 mod util;
 mod welcome;

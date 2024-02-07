@@ -49,6 +49,11 @@ impl MainView {
                         move |device| ui::overview::page(device),
                     )
                     .add_item(
+                        "Settings",
+                        "preferences-system-symbolic",
+                        move |device| ui::settings::page(device),
+                    )
+                    .add_item(
                         "Lua Console",
                         "companion-lua-console-symbolic",
                         move |device| ui::lua::page(device),

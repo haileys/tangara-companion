@@ -2,6 +2,7 @@
 
 mod device;
 mod flash;
+mod settings;
 mod ui;
 mod util;
 
