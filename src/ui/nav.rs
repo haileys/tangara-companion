@@ -51,6 +51,11 @@ impl MainView {
                         move |device| ui::overview::page(device),
                     )
                     .add_item(
+                        "Lua Console",
+                        "",
+                        move |_| ui::lua::page(),
+                    )
+                    .add_item(
                         "Firmware Update",
                         "software-update-available-symbolic",
                         |device| ui::update::flow(device),
