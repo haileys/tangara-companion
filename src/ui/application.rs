@@ -23,6 +23,15 @@ pub struct DeviceContext {
 
 impl Application {
     pub fn new(app: &adw::Application) -> Self {
+        let style = gtk::CssProvider::new();
+        style.load_from_resource("/zone/cooltech/tangara/companion/style/console.css");
+
+        gtk::style_context_add_provider_for_display(
+            &gtk::gdk::Display::default().unwrap(),
+            &style,
+            gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
+        );
+
         let view = ui::nav::MainView::new();
 
         let window = adw::ApplicationWindow::builder()
