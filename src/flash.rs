@@ -21,7 +21,7 @@ pub struct Flash {
     pub result: oneshot::Receiver<Result<(), FlashError>>,
 }
 
-pub fn start_flash(port: Arc<Tangara>, firmware: Arc<Firmware>) -> Flash {
+pub fn start_flash(port: Tangara, firmware: Arc<Firmware>) -> Flash {
     let (progress_tx, progress) = mpsc::channel(32);
     let (result_tx, result) = oneshot::channel();
 

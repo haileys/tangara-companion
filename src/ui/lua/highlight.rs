@@ -1,25 +1,41 @@
+use std::cell::RefCell;
 use std::collections::HashMap;
+use std::rc::Rc;
 
 use gtk::pango::{AttrColor, AttrFontDesc, AttrList, FontDescription};
 use tree_sitter::{Node, Tree, TreeCursor};
 
+#[derive(Clone)]
 pub struct Highlight {
-    parser: tree_sitter::Parser,
-    render: Render,
+    theme: Theme,
+    parser: Rc<RefCell<tree_sitter::Parser>>,
+    render: Rc<Render>,
 }
 
 impl Highlight {
     pub fn new(font: FontDescription) -> Self {
+        let theme = Theme::one_light();
+
         let mut parser = tree_sitter::Parser::new();
         parser.set_language(tree_sitter_lua::language()).unwrap();
-        let render = Render::new(Theme::one_light(), font);
-        Highlight { parser, render }
+
+        let render = Render::new(theme.clone(), font);
+
+        Highlight {
+            theme,
+            parser: Rc::new(RefCell::new(parser)),
+            render: Rc::new(render),
+        }
     }
 
-    pub fn process(&mut self, text: &str) -> AttrList {
+    pub fn theme(&self) -> &Theme {
+        &self.theme
+    }
+
+    pub fn process(&self, text: &str) -> AttrList {
         let attrs = AttrList::default();
 
-        let Some(tree) = self.parser.parse(text, None) else {
+        let Some(tree) = self.parser.borrow_mut().parse(text, None) else {
             println!("highlight");
             return attrs
         };
@@ -61,7 +77,7 @@ impl Style {
 }
 
 #[derive(Clone, Copy, Debug)]
-struct Color(u32);
+pub struct Color(u32);
 
 impl Color {
     pub fn red(&self) -> u16 {
@@ -74,6 +90,10 @@ impl Color {
 
     pub fn blue(&self) -> u16 {
         ((self.0 >> 0) * 256) as u16
+    }
+
+    pub fn foreground(&self) -> AttrColor {
+        AttrColor::new_foreground(self.red(), self.green(), self.blue())
     }
 }
 
@@ -167,11 +187,7 @@ impl Render {
             attrs.insert(bold);
         }
 
-        let mut color = AttrColor::new_foreground(
-            style.color.red(),
-            style.color.green(),
-            style.color.blue(),
-        );
+        let mut color = style.color.foreground();
         color.set_start_index(start);
         color.set_end_index(end);
         attrs.insert(color);
@@ -180,11 +196,12 @@ impl Render {
 
 /// Structure adapted from base16 theme
 /// https://github.com/chriskempson/base16
-struct Theme {
+#[derive(Clone)]
+pub struct Theme {
     _base00: Color,
     _base01: Color,
     _base02: Color,
-    _base03: Color,
+    pub base03: Color,
     _base04: Color,
     base05: Color,
     _base06: Color,
@@ -196,16 +213,17 @@ struct Theme {
     _base0c: Color,
     base0d: Color,
     base0e: Color,
-    _base0f: Color,
+    pub base0f: Color,
 }
 
 impl Theme {
+    /// https://github.com/purpleKarrot/base16-one-light-scheme
     pub fn one_light() -> Self {
         Theme {
             _base00: Color(0xfafafa),
             _base01: Color(0xf0f0f1),
             _base02: Color(0xe5e5e6),
-            _base03: Color(0xa0a1a7),
+            base03: Color(0xa0a1a7),
             _base04: Color(0x696c77),
             base05: Color(0x383a42),
             _base06: Color(0x202227),
@@ -217,7 +235,7 @@ impl Theme {
             _base0c: Color(0x0184bc),
             base0d: Color(0x4078f2),
             base0e: Color(0xa626a4),
-            _base0f: Color(0x986801),
+            base0f: Color(0x986801),
         }
     }
 }

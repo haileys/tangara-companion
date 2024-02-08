@@ -13,14 +13,15 @@ static CONSOLE_PROMPT: &[u8] = " → ".as_bytes();
 
 #[derive(Debug, Error)]
 pub enum OpenError {
-    #[error("opening serial port: {0}")]
+    #[error("Opening serial port: {0}")]
     Port(#[from] serialport::Error),
     #[error(transparent)]
     Connection(#[from] ConnectionError),
-    #[error("connection thread terminated unexpectedly")]
+    #[error("Connection thread terminated unexpectedly")]
     Canceled(#[from] oneshot::Canceled),
 }
 
+#[derive(Clone)]
 pub struct Connection {
     tx: async_channel::Sender<Cmd>,
 }

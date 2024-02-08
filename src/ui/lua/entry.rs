@@ -4,21 +4,15 @@ use gtk::prelude::{EditableExt, WidgetExt, EntryExt};
 
 use crate::ui::lua::highlight::Highlight;
 
-pub fn entry() -> gtk::Entry {
+pub fn entry(highlight: Highlight) -> gtk::Entry {
     let entry = gtk::Entry::builder()
+        .css_classes(["console-input"])
+        .hexpand(true)
         .build();
 
-    let mut font = entry.pango_context()
-        .font_description()
-        .unwrap_or_default();
-
-    font.set_family("monospace");
-
     entry.connect_changed({
-        let highlight = RefCell::new(Highlight::new(font));
-
         move |entry| {
-            let attrs = highlight.borrow_mut().process(entry.text().as_str());
+            let attrs = highlight.process(entry.text().as_str());
             entry.set_attributes(&attrs);
         }
     });

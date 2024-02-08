@@ -30,7 +30,7 @@ fn start(app: &adw::Application) {
     app.present();
 
     glib::spawn_future_local(async move {
-        let mut watch = Tangara::watch();
+        let mut watch = Box::pin(Tangara::watch());
         while let Some(tangara) = watch.next().await {
             app.set_tangara(tangara).await;
         }
