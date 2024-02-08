@@ -19,6 +19,8 @@ serialport = "4.3"
 thiserror = "1.0"
 zip = { version = "0.6", default-features = false, features = ["deflate"] }
 derive_more = "0.99.17"
+tree-sitter = "0.20.10"
+tree-sitter-lua = "0.0.19"
 
 [patch.crates-io]
 serialport = { git = "https://github.com/haileys/serialport-rs", branch = "tangara-flasher" }

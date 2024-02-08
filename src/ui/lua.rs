@@ -1,20 +1,42 @@
-use gtk::prelude::BoxExt;
+use gtk::prelude::{BoxExt, EditableExt, EntryExt, WidgetExt};
 
-use super::util::NavPageBuilder;
+use crate::ui::util::NavPageBuilder;
+
+mod entry;
+
+mod highlight;
 
 pub fn page() -> adw::NavigationPage {
-    let entry = gtk::Entry::builder()
-        .build();
-
-    let box_ = gtk::Box::builder()
+    let console = gtk::Box::builder()
         .orientation(gtk::Orientation::Vertical)
-        .valign(gtk::Align::Center)
-        .spacing(20)
+        .valign(gtk::Align::End)
         .build();
 
-    box_.append(&entry);
+    let header = adw::HeaderBar::new();
+    let footer = footer();
 
-    NavPageBuilder::new(&box_)
+    let view = adw::ToolbarView::builder()
+        .content(&console)
+        .build();
+
+    view.add_top_bar(&header);
+    view.add_bottom_bar(&footer);
+
+    adw::NavigationPage::builder()
+        .child(&view)
         .title("Lua Console")
         .build()
+}
+
+fn footer() -> gtk::Box {
+    let entry = entry::entry();
+
+    let footer = gtk::Box::builder()
+        .orientation(gtk::Orientation::Horizontal)
+        .css_classes(["toolbar"])
+        .build();
+
+    footer.append(&entry);
+
+    footer
 }
