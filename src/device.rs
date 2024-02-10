@@ -1,7 +1,6 @@
 pub mod connection;
 pub mod info;
 
-use std::rc::Rc;
 use std::sync::Arc;
 use std::time::Duration;
 

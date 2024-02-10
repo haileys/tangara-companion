@@ -1,6 +1,4 @@
-use std::cell::RefCell;
-
-use gtk::prelude::{EditableExt, WidgetExt, EntryExt};
+use gtk::prelude::{EditableExt, EntryExt};
 
 use crate::ui::lua::highlight::Highlight;
 

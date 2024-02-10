@@ -1,5 +1,6 @@
 use derive_more::Deref;
-use gtk::{pango::{AttrColor, AttrList, FontDescription}, prelude::{BoxExt, EditableExt, EntryExt, WidgetExt}};
+use gtk::pango::{AttrList, FontDescription};
+use gtk::prelude::{BoxExt, EditableExt, EntryExt, WidgetExt};
 
 use self::highlight::{Color, Highlight, Theme};
 

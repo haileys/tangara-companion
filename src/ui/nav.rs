@@ -1,6 +1,5 @@
 use std::cell::Cell;
 use std::rc::{Rc, Weak};
-use std::sync::Arc;
 
 use adw::prelude::BinExt;
 use derive_more::Deref;
