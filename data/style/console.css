@@ -1,6 +1,8 @@
 .console {
     font-family: monospace;
     color: #383a42;
+    padding: 6px;
+    padding-bottom:0px;
 }
 
 .console-input {
@@ -12,7 +14,7 @@
 }
 
 .console-toolbar {
-    padding: 0;
+    padding-top: 0;
     border-spacing: 0;
     font-family: monospace;
 }
