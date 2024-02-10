@@ -1,0 +1,13 @@
+[package]
+name = "tangara-companion-resources"
+version = "0.0.0"
+
+[lib]
+path = "lib.rs"
+
+[dependencies]
+glib = { workspace = true }
+gio = { workspace = true }
+
+[build-dependencies]
+walkdir = "2.4"

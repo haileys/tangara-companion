@@ -15,6 +15,8 @@ use device::Tangara;
 const APP_ID: &str = "zone.cooltech.tangara.companion";
 
 fn main() -> glib::ExitCode {
+    tangara_companion_resources::init();
+
     let app = adw::Application::builder()
         .application_id(APP_ID)
         .build();

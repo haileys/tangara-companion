@@ -5,9 +5,12 @@ edition = "2021"
 
 [dependencies]
 # GTK stack
-adw = { version = "0.6", package = "libadwaita", features = ["v1_4", "gtk_v4_10"] }
-gtk = { version = "0.8", package = "gtk4", features = ["v4_12"] }
-glib = "*"
+adw = { workspace = true }
+gtk = { workspace = true }
+glib = { workspace = true }
+
+# project crates
+tangara-companion-resources = { path = "data" }
 
 # general deps
 async-channel = "2.1.1"
@@ -24,3 +27,14 @@ zip = { version = "0.6", default-features = false, features = ["deflate"] }
 
 [patch.crates-io]
 serialport = { git = "https://github.com/haileys/serialport-rs", branch = "tangara-flasher" }
+
+[workspace]
+resolver = "2"
+members = [".", "data"]
+
+[workspace.dependencies]
+# GTK stack
+adw = { version = "0.6", package = "libadwaita", features = ["v1_4", "gtk_v4_10"] }
+gtk = { version = "0.8", package = "gtk4", features = ["v4_12"] }
+glib = "*"
+gio = "*"

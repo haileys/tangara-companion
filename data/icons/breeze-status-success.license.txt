@@ -1,4 +1,4 @@
-breeze-status.success.svg from The Breeze Icon Theme:
+breeze-status-success.svg from The Breeze Icon Theme:
 
     Copyright (C) 2014 Uri Herrera <uri_herrera@nitrux.in> and others
 
