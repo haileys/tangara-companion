@@ -1,8 +1,9 @@
-use std::io;
+use core::slice;
+use std::{io, string::FromUtf8Error};
 use std::time::Duration;
 
 use futures::channel::oneshot;
-use serialport::{SerialPortInfo, SerialPort, DataBits, StopBits, FlowControl, ClearBuffer};
+use serialport::{ClearBuffer, DataBits, FlowControl, SerialPort, SerialPortInfo, StopBits};
 use thiserror::Error;
 
 // const CONSOLE_BAUD_RATE: u32 = 115200;
@@ -23,7 +24,7 @@ pub enum OpenError {
 
 #[derive(Clone)]
 pub struct Connection {
-    tx: async_channel::Sender<Cmd>,
+    tx: async_channel::Sender<Msg>,
 }
 
 #[allow(unused)]
@@ -36,13 +37,11 @@ pub enum CommandError {
 }
 
 #[derive(Debug, Error)]
-pub enum ExecuteLuaError {
-    #[error("lost connection")]
-    Disconnected,
-    #[error("response not valid utf-8")]
-    InvalidUtf8,
-    #[error("invalid response")]
-    InvalidResponse,
+pub enum LuaError {
+    #[error(transparent)]
+    Command(#[from] CommandError),
+    #[error("invalid utf-8 in response")]
+    InvalidUtf8(#[from] FromUtf8Error),
 }
 
 impl Connection {
@@ -63,33 +62,30 @@ impl Connection {
     //     let command
     // }
 
-    pub async fn eval_lua(&self, code: &str) -> Result<String, ExecuteLuaError> {
-        if code.contains('\n') {
-            panic!("newline in lua soure code not allowed");
-        }
-
+    async fn execute_command(&self, command: impl Into<String>) -> Result<Vec<u8>, CommandError> {
         let (tx, rx) = oneshot::channel();
 
-        self.tx.send(Cmd::ExecLua(code.to_owned(), tx)).await
-            .map_err(|_| ExecuteLuaError::Disconnected)?;
+        self.tx.send(Msg::Command(command.into(), tx)).await
+            .map_err(|_| CommandError::Disconnected)?;
 
-        let result = rx.await
-            .map_err(|_| ExecuteLuaError::Disconnected)?;
+        rx.await.map_err(|_| CommandError::Disconnected)
+    }
 
-        // split response into lines
-        let output = std::str::from_utf8(&result)
-            .map_err(|_| ExecuteLuaError::InvalidUtf8)?;
-
-        let (_, response) = output.split_once("\r\n")
-            .ok_or(ExecuteLuaError::InvalidResponse)?;
-
-        let mut response = response.to_owned();
-
-        if response.ends_with("\r\n") {
-            response.truncate(response.len() - 2);
+    pub async fn eval_lua(&self, code: &str) -> Result<String, LuaError> {
+        if code.contains('\n') {
+            panic!("newline in lua source code not allowed");
         }
 
-        Ok(response)
+        // escape the code for the console
+        let code = code
+            .replace("\\", "\\\\")
+            .replace("\"", "\\\"");
+
+        let command = format!("luarun \"io.stdout:write(({code})..'\\n')\"");
+
+        let result = self.execute_command(command).await?;
+
+        Ok(String::from_utf8(result)?)
     }
 }
 
@@ -108,8 +104,8 @@ impl Connection {
 //     }
 // }
 
-enum Cmd {
-    ExecLua(String, oneshot::Sender<Vec<u8>>),
+enum Msg {
+    Command(String, oneshot::Sender<Vec<u8>>),
 }
 
 #[derive(Debug, Error)]
@@ -122,13 +118,15 @@ pub enum ConnectionError {
     Sync(#[from] SyncError),
 }
 
-async fn start_connection(mut port: Box<dyn SerialPort>)
-    -> Result<async_channel::Sender<Cmd>, OpenError>
+async fn start_connection(port: Box<dyn SerialPort>)
+    -> Result<async_channel::Sender<Msg>, OpenError>
 {
     let (retn_tx, retn_rx) = oneshot::channel();
 
     std::thread::spawn(move || {
-        match sync(&mut port) {
+        let mut port = Port::new(port);
+
+        match port.sync() {
             Ok(()) => {}
             Err(error) => {
                 let _ = retn_tx.send(Err(ConnectionError::Sync(error)));
@@ -143,7 +141,7 @@ async fn start_connection(mut port: Box<dyn SerialPort>)
             Ok(()) => {}
             Err(error) => {
                 // TODO signal this upwards with like an event or something
-                eprintln!("error running tangara connection: {error}");
+                eprintln!("error running tangara connection: {error:?}");
             }
         }
     });
@@ -152,33 +150,15 @@ async fn start_connection(mut port: Box<dyn SerialPort>)
 }
 
 fn run_connection(
-    cmd_rx: async_channel::Receiver<Cmd>,
-    mut port: Box<dyn SerialPort>,
+    cmd_rx: async_channel::Receiver<Msg>,
+    mut port: Port,
 ) -> Result<(), ConnectionError> {
     while let Some(cmd) = cmd_rx.recv_blocking().ok() {
         match cmd {
-            Cmd::ExecLua(code, ret) => {
-                // escape the code for the console
-                let code = code
-                    .replace("\\", "\\\\")
-                    .replace("\"", "\\\"");
-
-                let code = format!("io.stdout:write(({code})..'\\n')");
-
-                // resync to console
-                sync(&mut port)?;
-
-                println!("LUA: {code:?}");
-
-                // write our command:
-                port.write_all(b"luarun \"")?;
-                port.write_all(code.as_bytes())?;
-                port.write_all(b"\"\n")?;
-                port.flush()?;
-
-                // read the response
-                let output = read_and_sync(&mut port)?;
-                let _ = ret.send(output);
+            Msg::Command(command, ret) => {
+                port.sync()?;
+                let result = port.execute_command(&command)?;
+                let _ = ret.send(result);
             }
         }
     }
@@ -192,51 +172,81 @@ pub enum SyncError {
     Io(#[from] io::Error),
     #[error("port error: {0}")]
     Port(#[from] serialport::Error),
-    #[error("unexpected eof")]
-    Eof,
+    #[error("received unexpected data, desync")]
+    UnexpectedData { expected: u8, received: u8 },
     #[error("too much output")]
     TooMuchOutput,
 }
 
-fn sync(port: &mut Box<dyn SerialPort>) -> Result<(), SyncError> {
-    port.clear(ClearBuffer::Input)?;
-    port.write_all(b"\n")?;
-    port.flush()?;
-
-    read_and_sync(port)?;
-    Ok(())
+struct Port {
+    port: Box<dyn SerialPort>,
 }
 
-fn read_and_sync(port: &mut Box<dyn SerialPort>) -> Result<Vec<u8>, SyncError> {
-    let mut output = Vec::new();
-    let mut buff = [0u8; 64];
+impl Port {
+    pub fn new(port: Box<dyn SerialPort>) -> Self {
+        Port { port }
+    }
 
-    loop {
-        // println!("output -> {output:?}");
-        // println!("       -> {:?}", String::from_utf8_lossy(&output));
-        let n = port.read(&mut buff)?;
+    pub fn sync(&mut self) -> Result<(), SyncError> {
+        self.port.clear(ClearBuffer::Input)?;
+        self.port.write_all(b"\n")?;
+        self.port.flush()?;
+        self.read_until(CONSOLE_PROMPT)?;
+        Ok(())
+    }
 
-        // if the read ever EOFs we've lost the connection
-        if n == 0 {
-            return Err(SyncError::Eof);
+    pub fn execute_command(&mut self, command: &str) -> Result<Vec<u8>, SyncError> {
+        self.port.write_all(command.as_bytes())?;
+        self.port.write_all(b"\n")?;
+        self.port.flush()?;
+
+        // read back the echoed command we just sent:
+        for byte in command.as_bytes() {
+            self.expect(*byte)?;
         }
 
-        // otherwise write output into our buffer
-        output.extend(&buff[..n]);
+        // tangara echoes LF as CRLF:
+        self.expect(b'\r')?;
+        self.expect(b'\n')?;
 
-        // we have a limit on how much data we will read from the console
-        // before giving up on reaching sync. if we exceed that, just error
-        if output.len() > MAX_CONSOLE_BUFFER {
-            return Err(SyncError::TooMuchOutput);
-        }
+        // the rest of the output until the prompt is command output
+        self.read_until(CONSOLE_PROMPT)
+    }
 
-        // if the output ends with the console prompt then we have read the
-        // full output and reached sync
-        if output.ends_with(CONSOLE_PROMPT) {
-            // remove prompt from end
-            output.truncate(output.len() - CONSOLE_PROMPT.len());
-            // and return
-            return Ok(output);
+    fn expect(&mut self, expected: u8) -> Result<(), SyncError> {
+        let received = self.read_byte()?;
+        if received == expected {
+            Ok(())
+        } else {
+            Err(SyncError::UnexpectedData { expected, received })
         }
+    }
+
+    fn read_until(&mut self, delim: &[u8]) -> Result<Vec<u8>, SyncError> {
+        let mut buff = Vec::new();
+
+        loop {
+            buff.push(self.read_byte()?);
+
+            let suffix_idx = buff.len().saturating_sub(delim.len());
+
+            if &buff[suffix_idx..] == delim {
+                buff.truncate(suffix_idx);
+                return Ok(buff);
+            }
+
+            if buff.len() == MAX_CONSOLE_BUFFER {
+                return Err(SyncError::TooMuchOutput);
+            }
+        }
+    }
+
+    /// Reads a single byte from the serial port. No point doing our own
+    /// buffering here as the underlying implementation in the serialport
+    /// only reads one byte at a time anyway
+    fn read_byte(&mut self) -> Result<u8, SyncError> {
+        let mut byte = 0u8;
+        self.port.read_exact(slice::from_mut(&mut byte))?;
+        Ok(byte)
     }
 }

@@ -50,7 +50,7 @@ impl MainView {
                     )
                     .add_item(
                         "Lua Console",
-                        "",
+                        "lua-console",
                         move |device| ui::lua::page(device),
                     )
                     .add_item(

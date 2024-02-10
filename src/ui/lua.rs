@@ -95,6 +95,7 @@ fn output_line(theme: &Theme, line: &str) -> gtk::Box {
 
     let input = gtk::Label::builder()
         .label(line)
+        .valign(gtk::Align::Start)
         .build();
 
     let line = gtk::Box::builder()
@@ -114,7 +115,7 @@ fn error_line(theme: &Theme, line: &str) -> gtk::Box {
 
     let line = gtk::Box::builder()
         .orientation(gtk::Orientation::Horizontal)
-        .css_classes(["output-line"])
+        .css_classes(["error-line"])
         .build();
 
     line.append(&prompt);
@@ -134,6 +135,7 @@ fn colored_text(text: &str, color: Color) -> gtk::Label {
     gtk::Label::builder()
         .label(text)
         .attributes(&attrs)
+        .valign(gtk::Align::Start)
         .build()
 }
 
