@@ -1,5 +1,4 @@
 use std::rc::Rc;
-use std::sync::Arc;
 
 use derive_more::Deref;
 
@@ -17,12 +16,21 @@ pub struct Application {
 
 #[derive(Clone)]
 pub struct DeviceContext {
-    pub tangara: Arc<Tangara>,
+    pub tangara: Tangara,
     pub nav: Rc<ui::nav::DeviceNavController>,
 }
 
 impl Application {
     pub fn new(app: &adw::Application) -> Self {
+        let style = gtk::CssProvider::new();
+        style.load_from_resource("/zone/cooltech/tangara/companion/style/console.css");
+
+        gtk::style_context_add_provider_for_display(
+            &gtk::gdk::Display::default().unwrap(),
+            &style,
+            gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
+        );
+
         let view = ui::nav::MainView::new();
 
         let window = adw::ApplicationWindow::builder()
@@ -45,7 +53,7 @@ impl Application {
         }
     }
 
-    pub async fn set_tangara(&self, tangara: Option<Arc<Tangara>>) {
+    pub async fn set_tangara(&self, tangara: Option<Tangara>) {
         self.view.set_device(tangara).await
     }
 }

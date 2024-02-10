@@ -1,4 +1,4 @@
-use super::connection::{Connection, ExecuteLuaError};
+use super::connection::{Connection, LuaError};
 
 #[derive(Debug)]
 pub struct Info {
@@ -19,7 +19,7 @@ pub struct Database {
     pub disk_size: Option<u64>,
 }
 
-pub type InfoError = ExecuteLuaError;
+pub type InfoError = LuaError;
 
 pub async fn get(conn: &Connection) -> Result<Info, InfoError> {
     Ok(Info {

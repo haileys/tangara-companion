@@ -1,6 +1,5 @@
 use std::cell::Cell;
 use std::rc::{Rc, Weak};
-use std::sync::Arc;
 
 use adw::prelude::BinExt;
 use derive_more::Deref;
@@ -28,7 +27,6 @@ impl MainView {
 
         let sidebar = Sidebar::new();
         split.set_sidebar(Some(&*sidebar));
-        split.set_content(Some(&ui::welcome::page()));
 
         MainView {
             split,
@@ -37,7 +35,7 @@ impl MainView {
         }
     }
 
-    pub async fn set_device(&self, device: Option<Arc<Tangara>>) {
+    pub async fn set_device(&self, device: Option<Tangara>) {
         match device {
             None => {
                 self.sidebar.device_nav.set_child(None::<&gtk::Widget>);
@@ -49,6 +47,11 @@ impl MainView {
                         "Overview",
                         "help-about-symbolic",
                         move |device| ui::overview::page(device),
+                    )
+                    .add_item(
+                        "Lua Console",
+                        "lua-console",
+                        move |device| ui::lua::page(device),
                     )
                     .add_item(
                         "Firmware Update",
@@ -121,7 +124,7 @@ struct DeviceNavBuilder {
 }
 
 impl DeviceNavBuilder {
-    pub fn new(tangara: Arc<Tangara>, controller: NavController) -> Self {
+    pub fn new(tangara: Tangara, controller: NavController) -> Self {
         let list = gtk::ListBox::builder()
             .css_classes(["navigation-sidebar"])
             .build();

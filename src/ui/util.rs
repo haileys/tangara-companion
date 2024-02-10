@@ -9,12 +9,16 @@ pub struct NavPageBuilder {
 }
 
 impl NavPageBuilder {
-    pub fn clamped(object: &impl IsA<gtk::Widget>) -> Self {
+    pub fn new(object: &impl IsA<gtk::Widget>) -> Self {
         let view = adw::ToolbarView::builder()
-            .content(&content_clamp(object))
+            .content(object)
             .build();
 
         Self { view, title: String::new(), header: None }
+    }
+
+    pub fn clamped(object: &impl IsA<gtk::Widget>) -> Self {
+        Self::new(&content_clamp(object))
     }
 
     pub fn header(mut self, header: adw::HeaderBar) -> Self {

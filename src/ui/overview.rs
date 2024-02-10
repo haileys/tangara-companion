@@ -56,8 +56,7 @@ enum FetchInfoError {
 }
 
 async fn fetch_info(tangara: &Tangara) -> Result<device::info::Info, FetchInfoError> {
-    let conn = tangara.open().await?;
-    let info = device::info::get(&conn).await?;
+    let info = device::info::get(tangara.connection()).await?;
     Ok(info)
 }
 
