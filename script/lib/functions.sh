@@ -29,7 +29,7 @@ check-command() {
     local bin="$1"
     local hint="${2:-}"
 
-    [ -n "$hint" ] && hint=", $hint"
+    [ -n "$hint" ] && hint="; $hint"
 
     command -v "$bin" >/dev/null || die "command '${bin}' not found in PATH${hint}"
 }
@@ -37,4 +37,21 @@ check-command() {
 log-command() {
     info "running:" "$@"
     "$@"
+}
+
+dist-version() {
+    declare -g RELEASE_VERSION
+    [ -z "${RELEASE_VERSION:-}" ] && RELEASE_VERSION="$(git describe --tags)"
+    echo "$RELEASE_VERSION"
+}
+
+log-dist-version() {
+    info "Version $(dist-version)"
+}
+
+dist-dir() {
+    local dir
+    dir="dist/$(dist-version)"
+    mkdir -p "$dir"
+    echo "$dir"
 }

@@ -8,51 +8,72 @@ cd "$(dirname "$0")/.."
 source script/lib/functions.sh
 source script/lib/error.sh
 
-BUILD=release
+PROFILE=release
 TARGET=x86_64-pc-windows-msvc
+
+# activate WINDOWS_KIT
+[ -n "${XWIN_PATH:-}" ] || die "XWIN_PATH not set, cannot proceed"
 
 # check for prerequisite commands
 check-command lld-link
+check-command wine
+check-command winepath
 
 # check for gtk installation - build this on Windows with gvsbuild
-GTK_ROOT=cross/windows-x86_64/gtk-build/gtk/x64/release
+GTK_ROOT="$WINDOWS_KITS/gtk4/x64"
 [ -d "$GTK_ROOT" ] || die "cannot find gtk installation in $GTK_ROOT"
-
-# these ones you just have to copy from a visual studio install:
-# C:\Program Files (x86)\Windows Kits\10\lib\10.0.22621.0\um\x64
-SDK_UM_LIB=cross/windows-x86_64/um
-[ -d "$SDK_UM_LIB" ] || die "cannot find windows sdk um libs in $SDK_UM_LIB"
-
-# same with these ones
-# C:\Program Files (x86)\Windows Kits\10\lib\10.0.22621.0\ucrt\x64
-SDK_UCRT_LIB=cross/windows-x86_64/ucrt
-[ -d "$SDK_UCRT_LIB" ] || die "cannot find windows sdk ucrt libs in $SDK_UCRT_LIB"
-
-# and these
-# C:\Program Files (x86)\Windows Visual Studio\2022\BuildTools\VC\Tools\MSVC\14.38.33130\lib\x64
-SDK_MSVC_LIB=cross/windows-x86_64/msvc
-[ -d "$SDK_MSVC_LIB" ] || die "cannot find windows sdk msvc libs in $SDK_MSVC_LIB"
 
 # grab version number from git
 version="$(git describe --tags)"
 info "Version $version"
 
-# pass --release to cargo if BUILD==release:
+# pass --release to cargo if PROFILE==release:
 cargo_args=()
-[[ "$BUILD" == "release" ]] && cargo_args+="--release"
+[[ "$PROFILE" == "release" ]] && cargo_args+="--release"
 
 # set env vars we need for cross compilation
 export PKG_CONFIG_ALLOW_CROSS=1
 export PKG_CONFIG_PATH="$GTK_ROOT/lib/pkgconfig"
 
-: "${RUSTFLAGS:=""}"
-RUSTFLAGS="$RUSTFLAGS -C linker=$(which lld-link)"
-RUSTFLAGS="$RUSTFLAGS -C link-arg=/LIBPATH:$GTK_ROOT/lib"
-RUSTFLAGS="$RUSTFLAGS -C link-arg=/LIBPATH:$SDK_UM_LIB/lib"
-RUSTFLAGS="$RUSTFLAGS -C link-arg=/LIBPATH:$SDK_UCRT_LIB/lib"
-RUSTFLAGS="$RUSTFLAGS -C link-arg=/LIBPATH:$SDK_MSVC_LIB/lib"
-RUSTFLAGS="$RUSTFLAGS -C link-arg=/STACK:8000000"
-export RUSTFLAGS
+export CC_x86_64_pc_windows_msvc=clang-cl
+export AR_x86_64_pc_windows_msvc=llvm-lib
+export CL_FLAGS="-fuse-ld=lld-link -I$XWIN_PATH/splat/crt/include -I$XWIN_PATH/splat/sdk/include/ucrt -I$XWIN_PATH/splat/sdk/include/um -I$XWIN_PATH/splat/sdk/include/shared"
+export CFLAGS_x86_64_pc_windows_msvc="$CL_FLAGS"
+export CARGO_TARGET_X86_64_PC_WINDOWS_MSVC_LINKER=lld-link
+
+add_rustflag() {
+    local flag="$1"
+    [ -n "${RUSTFLAGS:-}" ] && RUSTFLAGS="$RUSTFLAGS "
+    export RUSTFLAGS="${RUSTFLAGS:-}$flag"
+}
+
+add_rustflag "-C link-arg=/LIBPATH:$GTK_ROOT/lib"
+add_rustflag "-C link-arg=/STACK:8000000"
+add_rustflag "-Lnative=$XWIN_PATH/splat/crt/lib/x86_64"
+add_rustflag "-Lnative=$XWIN_PATH/splat/sdk/lib/ucrt/x86_64"
+add_rustflag "-Lnative=$XWIN_PATH/splat/sdk/lib/um/x86_64"
 
 # do the build
+info "Compiling"
 log-command cargo build --target="$TARGET" "${cargo_args[@]}"
+
+# build the installer
+info "Building installer"
+
+dist_dir="dist/$version"
+mkdir -p "$dist_dir"
+
+# convert unix paths to windows paths
+# winepath starts quite slowly so batch all the paths up into one call
+win_pwd="$(winepath --windows "$(pwd)" 2>/dev/null)"
+win_gtk_root="$(winepath --windows "$GTK_ROOT" 2>/dev/null)"
+
+: "${WINE_PREFIX:="$HOME/.wine"}"
+wine "$WINE_PREFIX/drive_c/Program Files (x86)/Inno Setup 6/ISCC.exe" \
+    /Q /Qp \
+    "/DProjectDir=$win_pwd" \
+    "/DGtkDllDir=$win_gtk_root\\bin" \
+    "/DCargoTargetDir=$win_pwd\\target\\$TARGET\\$PROFILE" \
+    "/DDistDir=$win_pwd\\dist\\$version" \
+    "/DAppVersion=$version" \
+    pkg/windows/installer.iss
