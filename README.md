@@ -1,5 +1,11 @@
 # Tangara Companion
 
+## Developing
+
+### Tips
+
+* If you're adding new svg assets or anything styled with particular colours, check that it looks good in both light and dark modes! Use the environment variables `ADW_DEBUG_COLOR_SCHEME=prefer-dark` and `ADW_DEBUG_COLOR_SCHEME=prefer-light`.
+
 ## Building
 
 ### Cross compiling for Windows

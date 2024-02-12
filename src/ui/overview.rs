@@ -1,15 +1,14 @@
 use adw::prelude::{NavigationPageExt, PreferencesGroupExt, PreferencesPageExt};
-use gtk::ContentFit;
 
 use thiserror::Error;
 
 use crate::device;
 use crate::device::Tangara;
 use crate::device::info;
+use crate::ui;
 use crate::ui::application::DeviceContext;
-
-use super::label_row::LabelRow;
-use super::util::spinner_content;
+use crate::ui::label_row::LabelRow;
+use crate::ui::util::spinner_content;
 
 pub fn page(device: DeviceContext) -> adw::NavigationPage {
     let header = adw::HeaderBar::new();
@@ -64,10 +63,9 @@ fn show_info(device: DeviceContext, info: &device::info::Info) -> adw::Preferenc
     let title_group = adw::PreferencesGroup::builder()
         .build();
 
-    let title_picture = gtk::Picture::for_resource("/zone/cooltech/tangara/companion/assets/logo.svg");
-    title_picture.set_can_shrink(false);
-    title_picture.set_content_fit(ContentFit::ScaleDown);
-    title_group.add(&title_picture);
+    let title_logo = ui::widgets::logo::logo();
+    title_logo.set_can_shrink(false);
+    title_group.add(&title_logo);
 
     let device_group = device_group(&device.tangara);
     let firmware_group = firmware_group(&info.firmware);

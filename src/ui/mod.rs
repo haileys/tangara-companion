@@ -6,5 +6,6 @@ mod overview;
 mod update;
 mod util;
 mod welcome;
+mod widgets;
 
 pub use application::Application;

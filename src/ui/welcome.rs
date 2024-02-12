@@ -1,9 +1,10 @@
-use gtk::{Align, ContentFit, Orientation};
+use gtk::{Align, Orientation};
 use gtk::prelude::BoxExt;
 
+use crate::ui;
+
 pub fn page() -> adw::NavigationPage {
-    let picture = gtk::Picture::for_resource("/zone/cooltech/tangara/companion/assets/logo.svg");
-    picture.set_content_fit(ContentFit::ScaleDown);
+    let logo = ui::widgets::logo::logo();
 
     let label = gtk::Label::builder()
         .label("To begin, connect your Tangara and make sure it's switched on.")
@@ -15,7 +16,7 @@ pub fn page() -> adw::NavigationPage {
         .spacing(20)
         .build();
 
-    box_.append(&picture);
+    box_.append(&logo);
     box_.append(&label);
 
     let clamp = adw::Clamp::builder()
