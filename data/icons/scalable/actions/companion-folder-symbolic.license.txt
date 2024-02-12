@@ -1,5 +1,5 @@
-software-update-available-symbolic.svg from Adwaita icons, part of the GNOME project
-https://gitlab.gnome.org/GNOME/adwaita-icon-theme
+Originally folder-symbolic.svg, sourced from Adwaita icons, part of the
+GNOME project https://gitlab.gnome.org/GNOME/adwaita-icon-theme
 
 ---
 

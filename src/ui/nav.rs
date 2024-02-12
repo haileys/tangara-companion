@@ -45,17 +45,17 @@ impl MainView {
                 let list = DeviceNavBuilder::new(tangara, self.controller.clone())
                     .add_item(
                         "Overview",
-                        "help-about-symbolic",
+                        "companion-overview-symbolic",
                         move |device| ui::overview::page(device),
                     )
                     .add_item(
                         "Lua Console",
-                        "lua-console",
+                        "companion-lua-console-symbolic",
                         move |device| ui::lua::page(device),
                     )
                     .add_item(
                         "Firmware Update",
-                        "software-update-available-symbolic",
+                        "companion-firmware-update-symbolic",
                         |device| ui::update::flow(device),
                     )
                     .build();

@@ -56,7 +56,7 @@ fn select_group(ctx: UpdateContext) -> adw::PreferencesGroup {
         .build();
 
     select_firmware.add_suffix(&gtk::Image::builder()
-        .icon_name("folder-symbolic")
+        .icon_name("companion-folder-symbolic")
         .build());
 
     select_firmware.connect_activated(move |widget| {
@@ -250,7 +250,7 @@ fn complete(message: Result<(), Option<FlashError>>) -> adw::NavigationPage {
             .description("Please enjoy your freshly updated Tangara")
             .build(),
         Err(error) => adw::StatusPage::builder()
-            .icon_name("computer-fail-symbolic")
+            .icon_name("companion-computer-sadface-symbolic")
             .title("Flash failed")
             .description(match error {
                 Some(error) => format!("{error}"),

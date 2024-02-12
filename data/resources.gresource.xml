@@ -3,11 +3,11 @@
   <gresource prefix="/zone/cooltech/tangara/companion">
     <file preprocess="xml-stripblanks">assets/logo.svg</file>
     <file preprocess="xml-stripblanks">icons/breeze-status-success.svg</file>
-    <file preprocess="xml-stripblanks">icons/computer-fail-symbolic.svg</file>
-    <file preprocess="xml-stripblanks">icons/folder-symbolic.svg</file>
-    <file preprocess="xml-stripblanks">icons/help-about-symbolic.svg</file>
-    <file preprocess="xml-stripblanks">icons/lua-console.svg</file>
-    <file preprocess="xml-stripblanks">icons/software-update-available-symbolic.svg</file>
+    <file preprocess="xml-stripblanks">icons/scalable/actions/companion-firmware-update-symbolic.svg</file>
+    <file preprocess="xml-stripblanks">icons/scalable/actions/companion-folder-symbolic.svg</file>
+    <file preprocess="xml-stripblanks">icons/scalable/actions/companion-lua-console-symbol.svg</file>
+    <file preprocess="xml-stripblanks">icons/scalable/actions/companion-overview-symbolic.svg</file>
+    <file preprocess="xml-stripblanks">icons/scalable/status/companion-computer-sadface-symbolic.svg</file>
     <file>style/console.css</file>
   </gresource>
 </gresources>

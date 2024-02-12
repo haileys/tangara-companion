@@ -33,7 +33,7 @@ pub fn page(device: DeviceContext) -> adw::NavigationPage {
             }
             Err(error) => {
                 let content = adw::StatusPage::builder()
-                    .icon_name("computer-fail-symbolic")
+                    .icon_name("companion-computer-sadface-symbolic")
                     .title("Error communicating with Tangara")
                     .description(format!("{error}"))
                     .build();

@@ -1,5 +1,5 @@
-computer-fail-symbolic.svg from Adwaita icons, part of the GNOME project
-https://gitlab.gnome.org/GNOME/adwaita-icon-theme
+Originally help-about-symbolic.svg, sourced from Adwaita icons, part of the
+GNOME project: https://gitlab.gnome.org/GNOME/adwaita-icon-theme
 
 ---
 
