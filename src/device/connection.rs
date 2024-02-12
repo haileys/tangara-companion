@@ -174,7 +174,14 @@ impl Protocol {
     }
 
     pub fn sync(&mut self) -> Result<(), SyncError> {
-        self.port.clear(ClearBuffer::Input)?;
+        let in_buffer = self.port.port.bytes_to_read()?;
+        if in_buffer > 0 {
+            // read up anything that might still be in the buffer
+            let mut _buffer = vec![0; in_buffer as usize];
+            self.port.read_exact(&mut _buffer)?;
+            self.port.flush_read();
+        }
+
         self.port.write_all(b"\n")?;
         self.port.flush()?;
         self.read_until(CONSOLE_PROMPT)?;
@@ -260,10 +267,6 @@ impl Port {
         let rx = String::from_utf8_lossy(&self.rx);
         log::trace!("serial <-RX<-: {rx:?}");
         self.rx.clear();
-    }
-
-    pub fn clear(&mut self, clear: ClearBuffer) -> serialport::Result<()> {
-        self.port.clear(clear)
     }
 }
 
