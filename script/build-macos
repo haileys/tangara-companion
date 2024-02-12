@@ -1,7 +1,7 @@
 #!/bin/bash
 ### usage: build-macos [opts..]
 ###
-### Builds "Tangara Flasher.app" for macOS
+### Builds "Tangara Companion.app" for macOS
 
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -53,38 +53,38 @@ cargo_args=()
 log-command cargo build --target="$TARGET" "${cargo_args[@]}"
 
 # assemble macOS .app bundle
-info "assembling 'Tangara Flasher.app' bundle"
+info "assembling 'Tangara Companion.app' bundle"
 
 build_dir="target/$TARGET/$BUILD"
-bundle="$build_dir/Tangara Flasher.app"
+bundle="$build_dir/Tangara Companion.app"
 
 # clean the slate:
 rm -rf "$bundle"
 mkdir -p "$bundle"
 
 # copy executable into bundle
-executable="$bundle/Contents/MacOS/tangaraflasher"
+executable="$bundle/Contents/MacOS/tangara-companion"
 mkdir -p "$(dirname "$executable")"
-cp "$build_dir/tangaraflasher" "$executable"
+cp "$build_dir/tangara-companion" "$executable"
 
 # copy app icon
 resources="$bundle/Contents/Resources"
-icon="$resources/Tangara Flasher.png"
+icon="$resources/Tangara Companion.png"
 mkdir -p "$resources"
 cp assets/icon.png "$icon"
 
 # write Info.plist
 cat > "$bundle/Contents/Info.plist" << EOF
 {
-    CFBundleName = tangaraflasher;
-    CFBundleDisplayName = "Tangara Flasher";
-    CFBundleIdentifier = "zone.cooltech.tangara.TangaraFlasher";
+    CFBundleName = tangara-companion;
+    CFBundleDisplayName = "Tangara Companion";
+    CFBundleIdentifier = "zone.cooltech.tangara.TangaraCompanion";
     CFBundleVersion = "$version";
     CFBundleShortVersionString = "$version";
     CFBundleInfoDictionaryVersion = "6.0";
     CFBundlePackageType = APPL;
-    CFBundleExecutable = tangaraflasher;
-    CFBundleIconFile = "Tangara Flasher.png";
+    CFBundleExecutable = tangara-companion;
+    CFBundleIconFile = "Tangara Companion.png";
 }
 EOF
 
@@ -113,8 +113,8 @@ DYLIBBUNDLER_LOG="$dylibbundler_log" \
 
 # build distribution zip including Licenses at top level next to .app
 info "zipping app bundle"
-staging_dir="/tmp/tangaraflasher-build-$$"
-zip_name="tangaraflasher-macos-x86_64.zip"
+staging_dir="/tmp/tangaracompanion-build-$$"
+zip_name="tangaracompanion-macos-x86_64.zip"
 mkdir -p "$staging_dir"
 cp -R "$bundle" "$staging_dir"
 cp -R "$licenses" "$staging_dir"
