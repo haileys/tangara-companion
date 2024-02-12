@@ -1,4 +1,5 @@
 use core::slice;
+use std::io::{Read, Write};
 use std::{io, string::FromUtf8Error};
 use std::time::Duration;
 
@@ -81,28 +82,13 @@ impl Connection {
             .replace("\\", "\\\\")
             .replace("\"", "\\\"");
 
-        let command = format!("luarun \"io.stdout:write(({code})..'\\n')\"");
+        let command = format!("luarun \"io.stdout:write(({code}))\"");
 
         let result = self.execute_command(command).await?;
 
         Ok(String::from_utf8(result)?)
     }
 }
-
-// fn escape_command_arg(out: &mut String, arg: &str) {
-//     let need_quote = arg.contains(char::is_whitespace);
-
-//     if need_quote {
-//         out += '"';
-//     }
-
-//     for c in arg {
-//         match c {
-//             '"' => { out += "\\\"" }
-
-//         }
-//     }
-// }
 
 enum Msg {
     Command(String, oneshot::Sender<Vec<u8>>),
@@ -124,7 +110,7 @@ async fn start_connection(port: Box<dyn SerialPort>)
     let (retn_tx, retn_rx) = oneshot::channel();
 
     std::thread::spawn(move || {
-        let mut port = Port::new(port);
+        let mut port = Protocol::new(Port::new(port));
 
         match port.sync() {
             Ok(()) => {}
@@ -151,7 +137,7 @@ async fn start_connection(port: Box<dyn SerialPort>)
 
 fn run_connection(
     cmd_rx: async_channel::Receiver<Msg>,
-    mut port: Port,
+    mut port: Protocol,
 ) -> Result<(), ConnectionError> {
     while let Some(cmd) = cmd_rx.recv_blocking().ok() {
         match cmd {
@@ -178,13 +164,13 @@ pub enum SyncError {
     TooMuchOutput,
 }
 
-struct Port {
-    port: Box<dyn SerialPort>,
+struct Protocol {
+    port: Port,
 }
 
-impl Port {
-    pub fn new(port: Box<dyn SerialPort>) -> Self {
-        Port { port }
+impl Protocol {
+    pub fn new(port: Port) -> Self {
+        Protocol { port }
     }
 
     pub fn sync(&mut self) -> Result<(), SyncError> {
@@ -231,6 +217,7 @@ impl Port {
             let suffix_idx = buff.len().saturating_sub(delim.len());
 
             if &buff[suffix_idx..] == delim {
+                self.port.flush_read();
                 buff.truncate(suffix_idx);
                 return Ok(buff);
             }
@@ -244,9 +231,64 @@ impl Port {
     /// Reads a single byte from the serial port. No point doing our own
     /// buffering here as the underlying implementation in the serialport
     /// only reads one byte at a time anyway
-    fn read_byte(&mut self) -> Result<u8, SyncError> {
+    fn read_byte(&mut self) -> io::Result<u8> {
         let mut byte = 0u8;
         self.port.read_exact(slice::from_mut(&mut byte))?;
         Ok(byte)
+    }
+}
+
+struct Port {
+    port: Box<dyn SerialPort>,
+    // buffers for logging
+    rx: Vec<u8>,
+    tx: Vec<u8>,
+}
+
+impl Port {
+    const MAX_BUFFER_LEN: usize = 1024;
+
+    pub fn new(port: Box<dyn SerialPort>) -> Self {
+        Port {
+            port,
+            rx: Vec::new(),
+            tx: Vec::new(),
+        }
+    }
+
+    pub fn flush_read(&mut self) {
+        let rx = String::from_utf8_lossy(&self.rx);
+        log::trace!("serial <-RX<-: {rx:?}");
+        self.rx.clear();
+    }
+
+    pub fn clear(&mut self, clear: ClearBuffer) -> serialport::Result<()> {
+        self.port.clear(clear)
+    }
+}
+
+impl Read for Port {
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        let n = self.port.read(buf)?;
+        self.rx.extend(buf[..n].iter().copied());
+        self.rx.truncate(Self::MAX_BUFFER_LEN);
+        Ok(n)
+    }
+}
+
+impl Write for Port {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        let n = self.port.write(buf)?;
+        self.tx.extend(buf[..n].iter().copied());
+        self.tx.truncate(Self::MAX_BUFFER_LEN);
+        Ok(n)
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        let tx = String::from_utf8_lossy(&self.tx);
+        log::trace!("serial ->TX->: {tx:?}");
+        self.tx.clear();
+
+        self.port.flush()
     }
 }
