@@ -4,10 +4,9 @@ use std::{io, string::FromUtf8Error};
 use std::time::Duration;
 
 use futures::channel::oneshot;
-use serialport::{ClearBuffer, DataBits, FlowControl, SerialPort, SerialPortInfo, StopBits};
+use serialport::{DataBits, FlowControl, SerialPort, SerialPortInfo, StopBits};
 use thiserror::Error;
 
-// const CONSOLE_BAUD_RATE: u32 = 115200;
 const CONSOLE_BAUD_RATE: u32 = 115200;
 const CONSOLE_TIMEOUT: Duration = Duration::from_secs(1);
 const MAX_CONSOLE_BUFFER: usize = 64*1024;
@@ -58,10 +57,6 @@ impl Connection {
 
         Ok(Connection { tx })
     }
-
-    // pub async fn execute_command(&self, command: &[&str]) -> Result<Vec<u8>, CommandError> {
-    //     let command
-    // }
 
     async fn execute_command(&self, command: impl Into<String>) -> Result<Vec<u8>, CommandError> {
         let (tx, rx) = oneshot::channel();
