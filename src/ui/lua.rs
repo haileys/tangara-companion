@@ -65,9 +65,7 @@ pub fn page(device: DeviceContext) -> adw::NavigationPage {
 }
 
 fn input_line(highlight: &Highlight, line: &str) -> gtk::Box {
-    let prompt = gtk::Label::builder()
-        .label(PROMPT)
-        .build();
+    let prompt = colored_text(PROMPT, highlight.theme().base05);
 
     let attrs = highlight.process(line);
 
@@ -87,12 +85,8 @@ fn input_line(highlight: &Highlight, line: &str) -> gtk::Box {
 }
 
 fn output_line(theme: &Theme, line: &str) -> gtk::Box {
-    let prompt = colored_text(RESULT, theme.base03);
-
-    let input = gtk::Label::builder()
-        .label(line)
-        .valign(gtk::Align::Start)
-        .build();
+    let prompt = colored_text(RESULT, theme.base05);
+    let output = colored_text(line, theme.base05);
 
     let line = gtk::Box::builder()
         .orientation(gtk::Orientation::Horizontal)
@@ -100,7 +94,7 @@ fn output_line(theme: &Theme, line: &str) -> gtk::Box {
         .build();
 
     line.append(&prompt);
-    line.append(&input);
+    line.append(&output);
 
     line
 }
