@@ -18,5 +18,7 @@ pub fn init() {
 
 #[cfg(debug_assertions)]
 pub fn init() {
-    panic!("G_RESOURCE_OVERLAYS env var must be set in debug builds!");
+    if std::env::var("G_RESOURCE_OVERLAYS").is_err() {
+        panic!("G_RESOURCE_OVERLAYS env var must be set in debug builds!");
+    }
 }
