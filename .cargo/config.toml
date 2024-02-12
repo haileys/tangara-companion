@@ -1,0 +1,3 @@
+[target.x86_64-pc-windows-msvc]
+# GTK requires more stack than we get on the main thread by default:
+rustflags = ["-C", "link-args=/STACK:8000000"]
