@@ -8,11 +8,13 @@ cd "$(dirname "$0")/.."
 source script/lib/functions.sh
 source script/lib/error.sh
 
+# configure me!
 PROFILE=release
 TARGET=x86_64-pc-windows-msvc
+ARCH=x86_64
 
-# activate WINDOWS_KIT
-[ -n "${XWIN_PATH:-}" ] || die "XWIN_PATH not set, cannot proceed"
+# check for WINDOWS_KITS
+[ -n "${WINDOWS_KITS:-}" ] || die "WINDOWS_KITS not set, cannot proceed. Hailey will document this whole thing eventually"
 
 # check for prerequisite commands
 check-command lld-link
@@ -20,8 +22,12 @@ check-command wine
 check-command winepath
 
 # check for gtk installation - build this on Windows with gvsbuild
-GTK_ROOT="$WINDOWS_KITS/gtk4/x64"
-[ -d "$GTK_ROOT" ] || die "cannot find gtk installation in $GTK_ROOT"
+GTK4_KIT="$WINDOWS_KITS/gtk4"
+[ -d "$GTK4_KIT" ] || die "cannot find gtk4 kit in $GTK4_KIT"
+
+# check for windows sdk - grab this with xwin
+XWIN_KIT="$WINDOWS_KITS/xwin"
+[ -d "$XWIN_KIT" ] || die "cannot find xwin kit in $XWIN_KIT"
 
 # grab version number from git
 version="$(git describe --tags)"
@@ -32,26 +38,35 @@ cargo_args=()
 [[ "$PROFILE" == "release" ]] && cargo_args+="--release"
 
 # set env vars we need for cross compilation
+cl_flags=(
+    -fuse-ld=lld-link
+    "-I$XWIN_KIT/crt/include"
+    "-I$XWIN_KIT/sdk/include/ucrt"
+    "-I$XWIN_KIT/sdk/include/um"
+    "-I$XWIN_KIT/sdk/include/shared"
+)
+
+rustflags=(
+    -C link-arg=/STACK:8000000
+    -C "link-arg=/LIBPATH:$GTK4_KIT/$ARCH/lib"
+    "-Lnative=$XWIN_KIT/crt/lib/$ARCH"
+    "-Lnative=$XWIN_KIT/sdk/lib/ucrt/$ARCH"
+    "-Lnative=$XWIN_KIT/sdk/lib/um/$ARCH"
+)
+
 export PKG_CONFIG_ALLOW_CROSS=1
-export PKG_CONFIG_PATH="$GTK_ROOT/lib/pkgconfig"
+export PKG_CONFIG_PATH="$GTK4_KIT/lib/pkgconfig"
 
 export CC_x86_64_pc_windows_msvc=clang-cl
 export AR_x86_64_pc_windows_msvc=llvm-lib
-export CL_FLAGS="-fuse-ld=lld-link -I$XWIN_PATH/splat/crt/include -I$XWIN_PATH/splat/sdk/include/ucrt -I$XWIN_PATH/splat/sdk/include/um -I$XWIN_PATH/splat/sdk/include/shared"
-export CFLAGS_x86_64_pc_windows_msvc="$CL_FLAGS"
 export CARGO_TARGET_X86_64_PC_WINDOWS_MSVC_LINKER=lld-link
 
-add_rustflag() {
-    local flag="$1"
-    [ -n "${RUSTFLAGS:-}" ] && RUSTFLAGS="$RUSTFLAGS "
-    export RUSTFLAGS="${RUSTFLAGS:-}$flag"
-}
-
-add_rustflag "-C link-arg=/LIBPATH:$GTK_ROOT/lib"
-add_rustflag "-C link-arg=/STACK:8000000"
-add_rustflag "-Lnative=$XWIN_PATH/splat/crt/lib/x86_64"
-add_rustflag "-Lnative=$XWIN_PATH/splat/sdk/lib/ucrt/x86_64"
-add_rustflag "-Lnative=$XWIN_PATH/splat/sdk/lib/um/x86_64"
+# using a * array expansion rather than @ defeats the purpose of quoting the
+# array elements above properly :'( but these vars are just strings anyway so
+# not much we can do about it
+export CL_FLAGS="${cl_flags[*]}"
+export CFLAGS_x86_64_pc_windows_msvc="$CL_FLAGS"
+export RUSTFLAGS="${rustflags[*]}"
 
 # do the build
 info "Compiling"
@@ -66,13 +81,13 @@ mkdir -p "$dist_dir"
 # convert unix paths to windows paths
 # winepath starts quite slowly so batch all the paths up into one call
 win_pwd="$(winepath --windows "$(pwd)" 2>/dev/null)"
-win_gtk_root="$(winepath --windows "$GTK_ROOT" 2>/dev/null)"
+win_gtk4="$(winepath --windows "$GTK4_KIT/$ARCH" 2>/dev/null)"
 
 : "${WINE_PREFIX:="$HOME/.wine"}"
 wine "$WINE_PREFIX/drive_c/Program Files (x86)/Inno Setup 6/ISCC.exe" \
     /Q /Qp \
     "/DProjectDir=$win_pwd" \
-    "/DGtkDllDir=$win_gtk_root\\bin" \
+    "/DGtkDir=$win_gtk4" \
     "/DCargoTargetDir=$win_pwd\\target\\$TARGET\\$PROFILE" \
     "/DDistDir=$win_pwd\\dist\\$version" \
     "/DAppVersion=$version" \

@@ -40,36 +40,44 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
 [Files]
-Source: "{#CargoTargetDir}\{#MyAppExeName}"; DestDir: "{app}\bin"; Flags: ignoreversion
+Source: "{#CargoTargetDir}\{#MyAppExeName}"; DestDir: "{app}\bin\"; Flags: ignoreversion
 
-; dll dependencies:
-Source: "{#GtkDllDir}\adwaita-1-0.dll";                 DestDir: "{app}\bin"; Flags: ignoreversion
-Source: "{#GtkDllDir}\cairo-2.dll";                     DestDir: "{app}\bin"; Flags: ignoreversion
-Source: "{#GtkDllDir}\cairo-gobject-2.dll";             DestDir: "{app}\bin"; Flags: ignoreversion
-Source: "{#GtkDllDir}\cairo-script-interpreter-2.dll";  DestDir: "{app}\bin"; Flags: ignoreversion
-Source: "{#GtkDllDir}\epoxy-0.dll";                     DestDir: "{app}\bin"; Flags: ignoreversion
-Source: "{#GtkDllDir}\ffi-8.dll";                       DestDir: "{app}\bin"; Flags: ignoreversion
-Source: "{#GtkDllDir}\freetype-6.dll";                  DestDir: "{app}\bin"; Flags: ignoreversion
-Source: "{#GtkDllDir}\fribidi-0.dll";                   DestDir: "{app}\bin"; Flags: ignoreversion
-Source: "{#GtkDllDir}\gdk_pixbuf-2.0-0.dll";            DestDir: "{app}\bin"; Flags: ignoreversion
-Source: "{#GtkDllDir}\gio-2.0-0.dll";                   DestDir: "{app}\bin"; Flags: ignoreversion
-Source: "{#GtkDllDir}\glib-2.0-0.dll";                  DestDir: "{app}\bin"; Flags: ignoreversion
-Source: "{#GtkDllDir}\gmodule-2.0-0.dll";               DestDir: "{app}\bin"; Flags: ignoreversion
-Source: "{#GtkDllDir}\gobject-2.0-0.dll";               DestDir: "{app}\bin"; Flags: ignoreversion
-Source: "{#GtkDllDir}\graphene-1.0-0.dll";              DestDir: "{app}\bin"; Flags: ignoreversion
-Source: "{#GtkDllDir}\gtk-4-1.dll";                     DestDir: "{app}\bin"; Flags: ignoreversion
-Source: "{#GtkDllDir}\harfbuzz.dll";                    DestDir: "{app}\bin"; Flags: ignoreversion
-Source: "{#GtkDllDir}\iconv.dll";                       DestDir: "{app}\bin"; Flags: ignoreversion
-Source: "{#GtkDllDir}\intl.dll";                        DestDir: "{app}\bin"; Flags: ignoreversion
-Source: "{#GtkDllDir}\jpeg62.dll";                      DestDir: "{app}\bin"; Flags: ignoreversion
-Source: "{#GtkDllDir}\libpng16.dll";                    DestDir: "{app}\bin"; Flags: ignoreversion
-Source: "{#GtkDllDir}\pango-1.0-0.dll";                 DestDir: "{app}\bin"; Flags: ignoreversion
-Source: "{#GtkDllDir}\pangocairo-1.0-0.dll";            DestDir: "{app}\bin"; Flags: ignoreversion
-Source: "{#GtkDllDir}\pangowin32-1.0-0.dll";            DestDir: "{app}\bin"; Flags: ignoreversion
-Source: "{#GtkDllDir}\pcre2-8.dll";                     DestDir: "{app}\bin"; Flags: ignoreversion
-Source: "{#GtkDllDir}\pixman-1-0.dll";                  DestDir: "{app}\bin"; Flags: ignoreversion
-Source: "{#GtkDllDir}\tiff.dll";                        DestDir: "{app}\bin"; Flags: ignoreversion
-Source: "{#GtkDllDir}\zlib1.dll";                       DestDir: "{app}\bin"; Flags: ignoreversion
+; direct dll dependencies:
+Source: "{#GtkDir}\bin\adwaita-1-0.dll"; DestDir: "{app}\bin\"; Flags: ignoreversion
+Source: "{#GtkDir}\bin\cairo-2.dll"; DestDir: "{app}\bin\"; Flags: ignoreversion
+Source: "{#GtkDir}\bin\cairo-gobject-2.dll"; DestDir: "{app}\bin\"; Flags: ignoreversion
+Source: "{#GtkDir}\bin\cairo-script-interpreter-2.dll"; DestDir: "{app}\bin\"; Flags: ignoreversion
+Source: "{#GtkDir}\bin\epoxy-0.dll"; DestDir: "{app}\bin\"; Flags: ignoreversion
+Source: "{#GtkDir}\bin\ffi-8.dll"; DestDir: "{app}\bin\"; Flags: ignoreversion
+Source: "{#GtkDir}\bin\freetype-6.dll"; DestDir: "{app}\bin\"; Flags: ignoreversion
+Source: "{#GtkDir}\bin\fribidi-0.dll"; DestDir: "{app}\bin\"; Flags: ignoreversion
+Source: "{#GtkDir}\bin\gdk_pixbuf-2.0-0.dll"; DestDir: "{app}\bin\"; Flags: ignoreversion
+Source: "{#GtkDir}\bin\gio-2.0-0.dll"; DestDir: "{app}\bin\"; Flags: ignoreversion
+Source: "{#GtkDir}\bin\glib-2.0-0.dll"; DestDir: "{app}\bin\"; Flags: ignoreversion
+Source: "{#GtkDir}\bin\gmodule-2.0-0.dll"; DestDir: "{app}\bin\"; Flags: ignoreversion
+Source: "{#GtkDir}\bin\gobject-2.0-0.dll"; DestDir: "{app}\bin\"; Flags: ignoreversion
+Source: "{#GtkDir}\bin\graphene-1.0-0.dll"; DestDir: "{app}\bin\"; Flags: ignoreversion
+Source: "{#GtkDir}\bin\gtk-4-1.dll"; DestDir: "{app}\bin\"; Flags: ignoreversion
+Source: "{#GtkDir}\bin\harfbuzz.dll"; DestDir: "{app}\bin\"; Flags: ignoreversion
+Source: "{#GtkDir}\bin\iconv.dll"; DestDir: "{app}\bin\"; Flags: ignoreversion
+Source: "{#GtkDir}\bin\intl.dll"; DestDir: "{app}\bin\"; Flags: ignoreversion
+Source: "{#GtkDir}\bin\jpeg62.dll"; DestDir: "{app}\bin\"; Flags: ignoreversion
+Source: "{#GtkDir}\bin\libexpat.dll"; DestDir: "{app}\bin\"; Flags: ignoreversion
+Source: "{#GtkDir}\bin\libpng16.dll"; DestDir: "{app}\bin\"; Flags: ignoreversion
+Source: "{#GtkDir}\bin\libxml2.dll"; DestDir: "{app}\bin\"; Flags: ignoreversion
+Source: "{#GtkDir}\bin\pango-1.0-0.dll"; DestDir: "{app}\bin\"; Flags: ignoreversion
+Source: "{#GtkDir}\bin\pangocairo-1.0-0.dll"; DestDir: "{app}\bin\"; Flags: ignoreversion
+Source: "{#GtkDir}\bin\pangowin32-1.0-0.dll"; DestDir: "{app}\bin\"; Flags: ignoreversion
+Source: "{#GtkDir}\bin\pcre2-8.dll"; DestDir: "{app}\bin\"; Flags: ignoreversion
+Source: "{#GtkDir}\bin\pixman-1-0.dll"; DestDir: "{app}\bin\"; Flags: ignoreversion
+Source: "{#GtkDir}\bin\rsvg-2.0-vs17.dll"; DestDir: "{app}\bin\"; Flags: ignoreversion
+Source: "{#GtkDir}\bin\tiff.dll"; DestDir: "{app}\bin\"; Flags: ignoreversion
+Source: "{#GtkDir}\bin\zlib1.dll"; DestDir: "{app}\bin\"; Flags: ignoreversion
+
+; rsvg dynamic loader for gdk-pixbuf
+Source: "{#GtkDir}\lib\gdk-pixbuf-2.0\2.10.0\loaders.cache"; DestDir: "{app}\lib\gdk-pixbuf-2.0\2.10.0\"; Flags: ignoreversion
+Source: "{#GtkDir}\lib\gdk-pixbuf-2.0\2.10.0\loaders\libpixbufloader-svg.dll"; DestDir: "{app}\lib\gdk-pixbuf-2.0\2.10.0\loaders\"; Flags: ignoreversion
+
 ; NOTE: Don't use "Flags: ignoreversion" on any shared system files
 
 [Icons]
