@@ -42,10 +42,6 @@ pub fn page(device: DeviceContext) -> adw::NavigationPage {
         move |_| { entry.grab_focus(); }
     });
 
-    // for _ in 1..50 {
-    //     console.append(input_line(&highlight, "hello"));
-    // }
-
     footer.entry.connect_activate(move |entry| {
         let text = entry.text();
         entry.set_text("");
