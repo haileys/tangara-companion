@@ -5,7 +5,7 @@
     <file preprocess="xml-stripblanks">icons/breeze-status-success.svg</file>
     <file preprocess="xml-stripblanks">icons/scalable/actions/companion-firmware-update-symbolic.svg</file>
     <file preprocess="xml-stripblanks">icons/scalable/actions/companion-folder-symbolic.svg</file>
-    <file preprocess="xml-stripblanks">icons/scalable/actions/companion-lua-console-symbol.svg</file>
+    <file preprocess="xml-stripblanks">icons/scalable/actions/companion-lua-console-symbolic.svg</file>
     <file preprocess="xml-stripblanks">icons/scalable/actions/companion-overview-symbolic.svg</file>
     <file preprocess="xml-stripblanks">icons/scalable/status/companion-computer-sadface-symbolic.svg</file>
     <file>style/console.css</file>
