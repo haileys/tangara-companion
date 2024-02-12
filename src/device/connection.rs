@@ -51,7 +51,7 @@ impl Connection {
             .data_bits(DataBits::Eight)
             .stop_bits(StopBits::One)
             .timeout(CONSOLE_TIMEOUT)
-            .flow_control(FlowControl::Hardware)
+            .flow_control(FlowControl::None)
             .open()?;
 
         let tx = start_connection(port).await?;
