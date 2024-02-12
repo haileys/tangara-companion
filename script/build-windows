@@ -8,51 +8,87 @@ cd "$(dirname "$0")/.."
 source script/lib/functions.sh
 source script/lib/error.sh
 
-BUILD=release
+# configure me!
+PROFILE=release
 TARGET=x86_64-pc-windows-msvc
+ARCH=x86_64
+
+# check for WINDOWS_KITS
+[ -n "${WINDOWS_KITS:-}" ] || die "WINDOWS_KITS not set, cannot proceed. Hailey will document this whole thing eventually"
 
 # check for prerequisite commands
 check-command lld-link
+check-command wine
+check-command winepath
 
 # check for gtk installation - build this on Windows with gvsbuild
-GTK_ROOT=cross/windows-x86_64/gtk-build/gtk/x64/release
-[ -d "$GTK_ROOT" ] || die "cannot find gtk installation in $GTK_ROOT"
+GTK4_KIT="$WINDOWS_KITS/gtk4"
+[ -d "$GTK4_KIT" ] || die "cannot find gtk4 kit in $GTK4_KIT"
 
-# these ones you just have to copy from a visual studio install:
-# C:\Program Files (x86)\Windows Kits\10\lib\10.0.22621.0\um\x64
-SDK_UM_LIB=cross/windows-x86_64/um
-[ -d "$SDK_UM_LIB" ] || die "cannot find windows sdk um libs in $SDK_UM_LIB"
-
-# same with these ones
-# C:\Program Files (x86)\Windows Kits\10\lib\10.0.22621.0\ucrt\x64
-SDK_UCRT_LIB=cross/windows-x86_64/ucrt
-[ -d "$SDK_UCRT_LIB" ] || die "cannot find windows sdk ucrt libs in $SDK_UCRT_LIB"
-
-# and these
-# C:\Program Files (x86)\Windows Visual Studio\2022\BuildTools\VC\Tools\MSVC\14.38.33130\lib\x64
-SDK_MSVC_LIB=cross/windows-x86_64/msvc
-[ -d "$SDK_MSVC_LIB" ] || die "cannot find windows sdk msvc libs in $SDK_MSVC_LIB"
+# check for windows sdk - grab this with xwin
+XWIN_KIT="$WINDOWS_KITS/xwin"
+[ -d "$XWIN_KIT" ] || die "cannot find xwin kit in $XWIN_KIT"
 
 # grab version number from git
 version="$(git describe --tags)"
 info "Version $version"
 
-# pass --release to cargo if BUILD==release:
+# pass --release to cargo if PROFILE==release:
 cargo_args=()
-[[ "$BUILD" == "release" ]] && cargo_args+="--release"
+[[ "$PROFILE" == "release" ]] && cargo_args+="--release"
 
 # set env vars we need for cross compilation
-export PKG_CONFIG_ALLOW_CROSS=1
-export PKG_CONFIG_PATH="$GTK_ROOT/lib/pkgconfig"
+cl_flags=(
+    -fuse-ld=lld-link
+    "-I$XWIN_KIT/crt/include"
+    "-I$XWIN_KIT/sdk/include/ucrt"
+    "-I$XWIN_KIT/sdk/include/um"
+    "-I$XWIN_KIT/sdk/include/shared"
+)
 
-: "${RUSTFLAGS:=""}"
-RUSTFLAGS="$RUSTFLAGS -C linker=$(which lld-link)"
-RUSTFLAGS="$RUSTFLAGS -C link-arg=/LIBPATH:$GTK_ROOT/lib"
-RUSTFLAGS="$RUSTFLAGS -C link-arg=/LIBPATH:$SDK_UM_LIB/lib"
-RUSTFLAGS="$RUSTFLAGS -C link-arg=/LIBPATH:$SDK_UCRT_LIB/lib"
-RUSTFLAGS="$RUSTFLAGS -C link-arg=/LIBPATH:$SDK_MSVC_LIB/lib"
-RUSTFLAGS="$RUSTFLAGS -C link-arg=/STACK:8000000"
-export RUSTFLAGS
+rustflags=(
+    -C link-arg=/STACK:8000000
+    -C "link-arg=/LIBPATH:$GTK4_KIT/$ARCH/lib"
+    "-Lnative=$XWIN_KIT/crt/lib/$ARCH"
+    "-Lnative=$XWIN_KIT/sdk/lib/ucrt/$ARCH"
+    "-Lnative=$XWIN_KIT/sdk/lib/um/$ARCH"
+)
+
+export PKG_CONFIG_ALLOW_CROSS=1
+export PKG_CONFIG_PATH="$GTK4_KIT/lib/pkgconfig"
+
+export CC_x86_64_pc_windows_msvc=clang-cl
+export AR_x86_64_pc_windows_msvc=llvm-lib
+export CARGO_TARGET_X86_64_PC_WINDOWS_MSVC_LINKER=lld-link
+
+# using a * array expansion rather than @ defeats the purpose of quoting the
+# array elements above properly :'( but these vars are just strings anyway so
+# not much we can do about it
+export CL_FLAGS="${cl_flags[*]}"
+export CFLAGS_x86_64_pc_windows_msvc="$CL_FLAGS"
+export RUSTFLAGS="${rustflags[*]}"
 
 # do the build
+info "Compiling"
 log-command cargo build --target="$TARGET" "${cargo_args[@]}"
+
+# build the installer
+info "Building installer"
+
+dist_dir="dist/$version"
+mkdir -p "$dist_dir"
+
+# convert unix paths to windows paths
+# winepath starts quite slowly so batch all the paths up into one call
+win_pwd="$(winepath --windows "$(pwd)" 2>/dev/null)"
+win_gtk4="$(winepath --windows "$GTK4_KIT/$ARCH" 2>/dev/null)"
+
+: "${WINE_PREFIX:="$HOME/.wine"}"
+wine "$WINE_PREFIX/drive_c/Program Files (x86)/Inno Setup 6/ISCC.exe" \
+    /Q /Qp \
+    "/DProjectDir=$win_pwd" \
+    "/DGtkDir=$win_gtk4" \
+    "/DCargoTargetDir=$win_pwd\\target\\$TARGET\\$PROFILE" \
+    "/DDistDir=$win_pwd\\dist\\$version" \
+    "/DAppVersion=$version" \
+    pkg/windows/installer.iss

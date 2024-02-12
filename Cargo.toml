@@ -2,6 +2,7 @@
 name = "tangara-companion"
 version = "0.2.0"
 edition = "2021"
+license = "GPL-3"
 
 [dependencies]
 # GTK stack
