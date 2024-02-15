@@ -3,9 +3,10 @@ use std::sync::Arc;
 use futures::channel::{mpsc, oneshot};
 use espflash::interface::Interface;
 use espflash::flasher::{Flasher, ProgressCallbacks};
+use serialport::{SerialPort, SerialPortInfo};
 use thiserror::Error;
 
-use crate::device::Tangara;
+use crate::device::{Tangara, ConnectionParams};
 use crate::firmware::{Firmware, Image};
 
 const BAUD_RATE: u32 = 1500000;
@@ -21,7 +22,7 @@ pub struct Flash {
     pub result: oneshot::Receiver<Result<(), FlashError>>,
 }
 
-pub fn setup(port: Tangara, firmware: Arc<Firmware>) -> (Flash, FlashTask) {
+pub fn setup(port: Arc<ConnectionParams>, firmware: Arc<Firmware>) -> (Flash, FlashTask) {
     let (progress_tx, progress) = mpsc::channel(32);
     let (result_tx, result) = oneshot::channel();
 
@@ -36,7 +37,7 @@ pub fn setup(port: Tangara, firmware: Arc<Firmware>) -> (Flash, FlashTask) {
 }
 
 pub struct FlashTask {
-    port: Tangara,
+    port: Arc<ConnectionParams>,
     firmware: Arc<Firmware>,
     progress_tx: mpsc::Sender<FlashStatus>,
     result_tx: oneshot::Sender<Result<(), FlashError>>,
@@ -61,7 +62,7 @@ pub enum FlashError {
 }
 
 fn run_flash(
-    port: &Tangara,
+    port: &ConnectionParams,
     firmware: &Firmware,
     mut sender: mpsc::Sender<FlashStatus>,
 ) -> Result<(), FlashError> {
@@ -75,14 +76,14 @@ fn run_flash(
 }
 
 fn flash_image(
-    tangara: &Tangara,
+    port: &ConnectionParams,
     image: &Image,
     sender: &mpsc::Sender<FlashStatus>
 ) -> Result<(), FlashError> {
-    let interface = Interface::new(tangara.serial_port(), None, None)
+    let interface = Interface::new(&port.serial, None, None)
         .map_err(|error| FlashError::OpenInterface(format!("{}", error)))?;
 
-    let mut flasher = Flasher::connect(interface, tangara.usb_port().clone(), Some(BAUD_RATE), true)
+    let mut flasher = Flasher::connect(interface, port.usb.clone(), Some(BAUD_RATE), true)
         .map_err(FlashError::Connect)?;
 
     let mut progress = ProgressCallback {

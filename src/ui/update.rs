@@ -194,7 +194,7 @@ fn flash_page(ctx: UpdateContext, firmware: Arc<Firmware>) -> adw::NavigationPag
     let locked = ctx.device.nav.lock();
 
     // start flash now UI is built
-    let (mut flash, task) = flash::setup(ctx.device.tangara.clone(), firmware);
+    let (mut flash, task) = ctx.device.tangara.clone().setup_flash(firmware);
 
     // spawn blocking flash task
     gtk::gio::spawn_blocking(move || task.run());

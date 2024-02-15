@@ -136,7 +136,7 @@ fn read_images(zip: &mut ZipArchive<File>, firmware: &data::Firmware)
             OpenError::ReadImage(image.name.clone(), error)
         })?;
 
-        eprintln!("image {} @ {:x?}, {} bytes", image.name, image.addr, data.len());
+        log::debug!("image {} @ {:x?}, {} bytes", image.name, image.addr, data.len());
 
         images.push(Image {
             name: image.name.clone(),

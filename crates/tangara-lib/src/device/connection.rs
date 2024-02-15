@@ -67,6 +67,14 @@ impl Connection {
         rx.await.map_err(|_| CommandError::Disconnected)
     }
 
+    pub async fn firmware_version(&self) -> Result<String, LuaError> {
+        let version = self
+            .eval_lua("require('version').esp()")
+            .await?;
+
+        Ok(version)
+    }
+
     pub async fn eval_lua(&self, code: &str) -> Result<String, LuaError> {
         if code.contains('\n') {
             panic!("newline in lua source code not allowed");
