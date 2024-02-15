@@ -2,13 +2,12 @@ use adw::prelude::{NavigationPageExt, PreferencesGroupExt, PreferencesPageExt};
 
 use thiserror::Error;
 
-use crate::device;
-use crate::device::Tangara;
-use crate::device::info;
 use crate::ui;
 use crate::ui::application::DeviceContext;
 use crate::ui::label_row::LabelRow;
 use crate::ui::util::spinner_content;
+
+use tangara_lib::device::{self, Tangara, info};
 
 pub fn page(device: DeviceContext) -> adw::NavigationPage {
     let header = adw::HeaderBar::new();

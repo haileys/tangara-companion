@@ -9,8 +9,9 @@ use gtk::{Align, FileDialog, FileFilter, Orientation};
 use gtk::gio::{Cancellable, File};
 use gtk::prelude::{BoxExt, ButtonExt, FileExt, WidgetExt};
 
-use crate::firmware::Firmware;
-use crate::flash::{self, FlashError, FlashStatus};
+use tangara_lib::firmware::Firmware;
+use tangara_lib::flash::{self, FlashError, FlashStatus};
+
 use crate::ui::application::DeviceContext;
 use crate::ui::label_row::LabelRow;
 use crate::ui::util::NavPageBuilder;
@@ -193,7 +194,10 @@ fn flash_page(ctx: UpdateContext, firmware: Arc<Firmware>) -> adw::NavigationPag
     let locked = ctx.device.nav.lock();
 
     // start flash now UI is built
-    let mut flash = flash::start_flash(ctx.device.tangara.clone(), firmware);
+    let (mut flash, task) = flash::setup(ctx.device.tangara.clone(), firmware);
+
+    // spawn blocking flash task
+    gtk::gio::spawn_blocking(move || task.run());
 
     // progress handler
     glib::spawn_future_local(async move {

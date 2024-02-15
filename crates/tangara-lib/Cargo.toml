@@ -1,0 +1,19 @@
+[package]
+name = "tangara-lib"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+# workspace deps
+async-channel = { workspace = true }
+serialport = { workspace = true }
+thiserror = { workspace = true }
+derive_more = { workspace = true }
+futures = { workspace = true }
+log = { workspace = true }
+
+# general deps
+espflash = { version = "2.1", default-features = false }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+zip = { version = "0.6", default-features = false, features = ["deflate"] }

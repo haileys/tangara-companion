@@ -12,32 +12,47 @@ glib = { workspace = true }
 
 # project crates
 tangara-companion-resources = { path = "data" }
+tangara-lib = { workspace = true }
+
+# workspace deps
+async-channel = { workspace = true }
+derive_more = { workspace = true }
+futures = { workspace = true }
+log = { workspace = true }
+serialport = { workspace = true }
+thiserror = { workspace = true }
 
 # general deps
-async-channel = "2.1.1"
-derive_more = "0.99.17"
 env_logger = "0.11"
-espflash = { version = "2.1", default-features = false }
-futures = "0.3"
-log = "0.4.20"
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
-serialport = "4.3"
-thiserror = "1.0"
 tree-sitter = "0.20.10"
 tree-sitter-lua = "0.0.19"
-zip = { version = "0.6", default-features = false, features = ["deflate"] }
-
-[patch.crates-io]
-serialport = { git = "https://github.com/haileys/serialport-rs", branch = "tangara-flasher" }
 
 [workspace]
 resolver = "2"
-members = [".", "data"]
+members = [
+    ".",
+    "crates/tangara-cli",
+    "crates/tangara-lib",
+    "data",
+]
 
 [workspace.dependencies]
+# project crates
+tangara-lib = { path = "crates/tangara-lib" }
+
 # GTK stack
 adw = { version = "0.6", package = "libadwaita", features = ["v1_4", "gtk_v4_10"] }
 gtk = { version = "0.8", package = "gtk4", features = ["v4_12"] }
 glib = "*"
 gio = "*"
+
+# general deps
+derive_more = "0.99"
+async-channel = "2.1"
+futures = "0.3"
+log = "0.4"
+serialport = "4.3"
+thiserror = "1.0"
+
+[patch.crates-io]
+serialport = { git = "https://github.com/haileys/serialport-rs", branch = "tangara-flasher" }

@@ -6,9 +6,9 @@ use derive_more::Deref;
 use glib::WeakRef;
 use gtk::prelude::{GridExt, WidgetExt, ListBoxRowExt};
 
-use crate::device::Tangara;
-use crate::ui;
+use tangara_lib::device::Tangara;
 
+use crate::ui;
 use super::application::DeviceContext;
 
 #[derive(Deref)]
@@ -35,7 +35,7 @@ impl MainView {
         }
     }
 
-    pub async fn set_device(&self, device: Option<Tangara>) {
+    pub fn set_device(&self, device: Option<Tangara>) {
         match device {
             None => {
                 self.sidebar.device_nav.set_child(None::<&gtk::Widget>);

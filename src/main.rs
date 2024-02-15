@@ -1,16 +1,12 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod device;
-mod firmware;
 mod flash;
 mod ui;
 mod util;
 
-use gtk::prelude::{ApplicationExt, ApplicationExtManual, GtkWindowExt};
-
 use futures::StreamExt;
-
-use device::Tangara;
+use gtk::prelude::{ApplicationExt, ApplicationExtManual, GtkWindowExt};
 use log::LevelFilter;
 
 const APP_ID: &str = "zone.cooltech.tangara.companion";
@@ -38,9 +34,11 @@ fn start(app: &adw::Application) {
     app.present();
 
     glib::spawn_future_local(async move {
-        let mut watch = Box::pin(Tangara::watch());
+        let mut watch = Box::pin(device::watch());
         while let Some(tangara) = watch.next().await {
-            app.set_tangara(tangara).await;
+            log::debug!("setting tangara: {tangara:?}");
+            app.set_tangara(tangara);
         }
+        log::debug!("falling out of set tangara loop");
     });
 }

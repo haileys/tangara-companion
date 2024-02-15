@@ -1,10 +1,9 @@
 use std::rc::Rc;
 
 use derive_more::Deref;
+use tangara_lib::device::Tangara;
 
 use crate::ui;
-use crate::device::Tangara;
-
 use super::nav::MainView;
 
 #[derive(Deref)]
@@ -53,7 +52,7 @@ impl Application {
         }
     }
 
-    pub async fn set_tangara(&self, tangara: Option<Tangara>) {
-        self.view.set_device(tangara).await
+    pub fn set_tangara(&self, tangara: Option<Tangara>) {
+        self.view.set_device(tangara)
     }
 }

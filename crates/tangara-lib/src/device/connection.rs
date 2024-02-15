@@ -22,7 +22,7 @@ pub enum OpenError {
     Canceled(#[from] oneshot::Canceled),
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Connection {
     tx: async_channel::Sender<Msg>,
 }
