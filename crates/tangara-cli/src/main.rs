@@ -1,19 +1,17 @@
-use std::cmp::Ordering;
 use std::io::{Write, self};
-use std::num::ParseIntError;
-use std::path::{PathBuf, Path};
+use std::path::PathBuf;
 use std::process::ExitCode;
 use std::sync::Arc;
 
-use console::{Term, style, Key};
+use console::{Term, style};
 use futures::StreamExt;
-use indicatif::{ProgressBar, TermLike};
+use indicatif::ProgressBar;
 use structopt::StructOpt;
-use tangara_lib::flash::{self, FlashStatus};
+use tangara_lib::flash::FlashStatus;
 use thiserror::Error;
 
-use tangara_lib::device::{Tangara, FindTangaraError};
-use tangara_lib::firmware::{Firmware, self};
+use tangara_lib::device::Tangara;
+use tangara_lib::firmware::Firmware;
 
 #[derive(StructOpt)]
 pub struct Opt {
@@ -117,7 +115,7 @@ async fn flash(args: FlashOpt) -> Result<ExitCode, FlashError> {
 
     writeln!(&term)?;
 
-    let mut progress_bar = ProgressBar::new(1);
+    let progress_bar = ProgressBar::new(1);
     progress_bar.set_message("Starting flash");
 
     let (mut flash, task) = tangara.setup_flash(firmware);

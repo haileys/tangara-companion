@@ -3,10 +3,9 @@ use std::sync::Arc;
 use futures::channel::{mpsc, oneshot};
 use espflash::interface::Interface;
 use espflash::flasher::{Flasher, ProgressCallbacks};
-use serialport::{SerialPort, SerialPortInfo};
 use thiserror::Error;
 
-use crate::device::{Tangara, ConnectionParams};
+use crate::device::ConnectionParams;
 use crate::firmware::{Firmware, Image};
 
 const BAUD_RATE: u32 = 1500000;

@@ -8,7 +8,7 @@ use thiserror::Error;
 
 use crate::{flash::{Flash, FlashTask, self}, firmware};
 
-use self::{connection::{Connection, LuaError}, info::Firmware};
+pub use connection::Connection;
 
 const USB_VID: u16 = 4617; // cool tech zone
 const USB_PID: u16 = 8212; // Tangara
