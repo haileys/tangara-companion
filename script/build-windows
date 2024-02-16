@@ -1,7 +1,7 @@
 #!/bin/bash
-### usage: build-macos [opts..]
+### usage: build-windows [opts..]
 ###
-### Cross compiles the Windows executable from a Unix host
+### Cross compiles the Windows distribution from a Linux host
 
 set -euo pipefail
 cd "$(dirname "$0")/.."
