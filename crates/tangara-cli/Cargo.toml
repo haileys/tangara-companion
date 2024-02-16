@@ -1,8 +1,23 @@
 [package]
-name = "cli"
+name = "tangara-cli"
 version = "0.1.0"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[[bin]]
+name = "tangara"
+path = "src/main.rs"
 
 [dependencies]
+# project crates
+tangara-lib = { workspace = true }
+
+# workspace deps
+thiserror = { workspace = true }
+futures = { workspace = true }
+
+# general deps
+console = "0.15"
+indicatif = "0.17"
+thread-executor = "0.1.0"
+structopt = "0.3.26"
+

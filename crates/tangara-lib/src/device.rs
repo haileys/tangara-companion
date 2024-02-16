@@ -6,7 +6,9 @@ use std::sync::Arc;
 use serialport::{SerialPortInfo, UsbPortInfo, SerialPortType};
 use thiserror::Error;
 
-use self::connection::Connection;
+use crate::{flash::{Flash, FlashTask, self}, firmware};
+
+pub use connection::Connection;
 
 const USB_VID: u16 = 4617; // cool tech zone
 const USB_PID: u16 = 8212; // Tangara
@@ -27,7 +29,7 @@ pub struct ConnectionParams {
 pub enum FindTangaraError {
     #[error("Error enumerating serial ports: {0}")]
     Port(#[from] serialport::Error),
-    #[error("Can't find Tangara (is it plugged in?)")]
+    #[error("Can't find Tangara, make sure it's plugged in and turned on")]
     NoTangara,
 }
 
@@ -74,5 +76,14 @@ impl Tangara {
         }
 
         Err(FindTangaraError::NoTangara)
+    }
+
+    pub fn setup_flash(self, firmware: Arc<firmware::Firmware>) -> (Flash, FlashTask) {
+        let params = self.params.clone();
+
+        // drop our own connection before trying to reopen the port for flash
+        drop(self);
+
+        flash::setup(params, firmware)
     }
 }

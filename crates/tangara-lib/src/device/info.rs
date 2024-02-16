@@ -24,7 +24,7 @@ pub type InfoError = LuaError;
 pub async fn get(conn: &Connection) -> Result<Info, InfoError> {
     Ok(Info {
         firmware: Firmware {
-            version: conn.eval_lua("require('version').esp()").await?,
+            version: conn.firmware_version().await?,
             samd: conn.eval_lua("require('version').samd()").await?,
             collation: conn.eval_lua("require('version').collator()").await?,
         },
