@@ -25,7 +25,7 @@ info "Building version $version"
 export PATH="$MACOS_KITS/osxcross/bin:$PATH"
 
 # set cross compile vars
-export PKG_CONFIG_PATH="$MACOS_KITS/gtk/lib/pkgconfig"
+export PKG_CONFIG_LIBDIR="$MACOS_KITS/gtk/lib/pkgconfig"
 export PKG_CONFIG_ALLOW_CROSS=1
 export CC=x86_64-apple-darwin23-clang
 export CARGO_TARGET_X86_64_APPLE_DARWIN_LINKER="$CC"
@@ -37,56 +37,15 @@ cargo_args=()
 # do the build
 log-command cargo build --target="$TARGET" "${cargo_args[@]}"
 
-# this is the end of the new cross compiler bizzo
-exit 1
-
-add-pkgconfig-path() {
-    local path="$1"
-    [ -n "${PKG_CONFIG_PATH:-}" ] && PKG_CONFIG_PATH=":$PKG_CONFIG_PATH"
-    export PKG_CONFIG_PATH="${path}${PKG_CONFIG_PATH:-}"
-}
-
-use-brew-pkg() {
-    local lib="$1"
-    local path
-
-    # get canonical path to pkgconfig dir for requested package:
-    path="$(brew --prefix "$lib")/lib/pkgconfig"
-    path="$(realpath "$path")"
-
-    add-pkgconfig-path "$path"
-}
-
-# check for prerequisites first:
-check-command brew "is homebrew installed?"
-check-command dylibbundler "to fix: brew install dylibbundler"
-
-# add the packages we need from homebrew to PKG_CONFIG_PATH
-info "resolving requisite homebrew packages"
-use-brew-pkg libffi
-use-brew-pkg glib
-use-brew-pkg pango
-use-brew-pkg gtk4
-use-brew-pkg libadwaita
-use-brew-pkg curl
-
-
-
-
 # assemble macOS .app bundle
-info "assembling 'Tangara Companion.app' bundle"
+info "Assembling 'Tangara Companion.app' bundle"
 
-build_dir="target/$TARGET/$BUILD"
+build_dir="target/$TARGET/$PROFILE"
 bundle="$build_dir/Tangara Companion.app"
 
 # clean the slate:
 rm -rf "$bundle"
 mkdir -p "$bundle"
-
-# copy executable into bundle
-executable="$bundle/Contents/MacOS/tangara-companion"
-mkdir -p "$(dirname "$executable")"
-cp "$build_dir/tangara-companion" "$executable"
 
 # copy app icon
 resources="$bundle/Contents/Resources"
@@ -95,42 +54,32 @@ mkdir -p "$resources"
 cp assets/icon.png "$icon"
 
 # write Info.plist
-cat > "$bundle/Contents/Info.plist" << EOF
-{
-    CFBundleName = tangara-companion;
-    CFBundleDisplayName = "Tangara Companion";
-    CFBundleIdentifier = "zone.cooltech.tangara.TangaraCompanion";
-    CFBundleVersion = "$version";
-    CFBundleShortVersionString = "$version";
-    CFBundleInfoDictionaryVersion = "6.0";
-    CFBundlePackageType = APPL;
-    CFBundleExecutable = tangara-companion;
-    CFBundleIconFile = "Tangara Companion.png";
-}
-EOF
+sed -e "s/{{VERSION}}/$version/g" "pkg/macos/Info.plist" > "$bundle/Contents/Info.plist"
 
-# copy and fix dynamic libraries
-info "bundling dylibs for distribution"
-dylibs="$bundle/Contents/libs"
-mkdir -p "$dylibs"
-dylibbundler_log="$build_dir/dylibbundler.log"
-dylibbundler \
-    --create-dir \
-    --bundle-deps \
-    --fix-file "$executable" \
-    --dest-dir "$dylibs" \
-    > "$dylibbundler_log" \
-    || die "dylibbundler failed, log saved in $dylibbundler_log"
+info "Installing executables"
 
-# copy licenses for everything we use into the app bundle
-info "copying licenses into app bundle"
-licenses="$bundle/Contents/Licenses"
-mkdir -p "$licenses"
+# copy executable into bundle
+executable="$bundle/Contents/MacOS/tangara-companion"
+install -D "$build_dir/tangara-companion" "$executable"
 
-DYLIBBUNDLER_LOG="$dylibbundler_log" \
-    LICENSES_DIR="$licenses" \
-    BREW_CELLAR="$(brew --cellar)" \
-    ruby script/lib/extract-dylibbundler-licenses.rb
+# copy rsvg loader into bundle manually
+# we only have to do this because its a runtime loaded library, and so for the
+# purposes of install-dylibs.rb, it's a 'root' - not directly depended on by
+# anything
+gdk_pixbuf="gdk-pixbuf-2.0/2.10.0"
+svg_loader_lib="$gdk_pixbuf/loaders/libpixbufloader-svg.so"
+loaders_cache="$gdk_pixbuf/loaders.cache"
+install -D "$MACOS_KITS/gtk/lib/$svg_loader_lib" "$bundle/Contents/lib/$svg_loader_lib"
+install -D "$MACOS_KITS/gtk/lib/$loaders_cache" "$bundle/Contents/lib/$loaders_cache"
+
+info "Bundling dynamic libraries"
+
+# install all dylib dependencies
+pkg/macos/install-dylibs.rb \
+    "$bundle/Contents/lib" \
+    -- \
+    "../MacOS/tangara-companion" \
+    "$svg_loader_lib"
 
 # build distribution zip including Licenses at top level next to .app
 info "zipping app bundle"
@@ -138,7 +87,6 @@ staging_dir="/tmp/tangaracompanion-build-$$"
 zip_name="tangaracompanion-macos-x86_64.zip"
 mkdir -p "$staging_dir"
 cp -R "$bundle" "$staging_dir"
-cp -R "$licenses" "$staging_dir"
 (cd "$staging_dir" && zip -r9 "$zip_name" *)
 
 # copy into dist dir

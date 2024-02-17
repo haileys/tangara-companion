@@ -1,0 +1,11 @@
+{
+    CFBundleName = tangara-companion;
+    CFBundleDisplayName = "Tangara Companion";
+    CFBundleIdentifier = "zone.cooltech.tangara.TangaraCompanion";
+    CFBundleVersion = "{{VERSION}}";
+    CFBundleShortVersionString = "{{VERSION}}";
+    CFBundleInfoDictionaryVersion = "6.0";
+    CFBundlePackageType = APPL;
+    CFBundleExecutable = tangara-companion;
+    CFBundleIconFile = "Tangara Companion.png";
+}
