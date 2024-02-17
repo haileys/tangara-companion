@@ -29,17 +29,13 @@ pub struct Connection {
 
 #[allow(unused)]
 #[derive(Debug, Error)]
-pub enum CommandError {
-    #[error("lost connection")]
-    Disconnected,
-    #[error("invalid response")]
-    InvalidResponse,
-}
+#[error("lost connection")]
+pub struct Disconnected;
 
 #[derive(Debug, Error)]
 pub enum LuaError {
     #[error(transparent)]
-    Command(#[from] CommandError),
+    Connection(#[from] Disconnected),
     #[error("invalid utf-8 in response")]
     InvalidUtf8(#[from] FromUtf8Error),
 }
@@ -58,13 +54,18 @@ impl Connection {
         Ok(Connection { tx })
     }
 
-    async fn execute_command(&self, command: impl Into<String>) -> Result<Vec<u8>, CommandError> {
+    async fn call<T, F>(&self, message: F) -> Result<T, Disconnected>
+        where F: FnOnce(oneshot::Sender<T>) -> Msg
+    {
         let (tx, rx) = oneshot::channel();
 
-        self.tx.send(Msg::Command(command.into(), tx)).await
-            .map_err(|_| CommandError::Disconnected)?;
+        self.tx.send(message(tx)).await.map_err(|_| Disconnected)?;
 
-        rx.await.map_err(|_| CommandError::Disconnected)
+        rx.await.map_err(|_| Disconnected)
+    }
+
+    async fn console_command(&self, command: impl Into<String>) -> Result<Vec<u8>, Disconnected> {
+        self.call(|tx| Msg::Command(command.into(), tx)).await
     }
 
     pub async fn firmware_version(&self) -> Result<String, LuaError> {
@@ -87,13 +88,23 @@ impl Connection {
 
         let command = format!("luarun \"io.stdout:write(({code}))\"");
 
-        let result = self.execute_command(command).await?;
+        let result = self.console_command(command).await?;
 
         Ok(String::from_utf8(result)?)
+    }
+
+    pub async fn disconnect(&self) {
+        // the only possible error we could encounter here is if the
+        // connection is already disconnected. i'll prove it, see?
+        let _: Result<(), Disconnected> =
+            self.call(|tx| Msg::Disconnect(tx)).await;
+
+        // so its safe to just ignore the result
     }
 }
 
 enum Msg {
+    Disconnect(oneshot::Sender<()>),
     Command(String, oneshot::Sender<Vec<u8>>),
 }
 
@@ -144,10 +155,20 @@ fn run_connection(
 ) -> Result<(), ConnectionError> {
     while let Some(cmd) = cmd_rx.recv_blocking().ok() {
         match cmd {
+            Msg::Disconnect(ret) => {
+                // drop port first to ensure connection is closed
+                drop(port);
+
+                // then send response to command sender
+                ret.send(()).ok();
+
+                // and terminate the loop
+                break;
+            }
             Msg::Command(command, ret) => {
                 port.sync()?;
                 let result = port.execute_command(&command)?;
-                let _ = ret.send(result);
+                ret.send(result).ok();
             }
         }
     }

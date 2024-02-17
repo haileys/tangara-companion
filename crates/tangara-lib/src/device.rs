@@ -78,11 +78,11 @@ impl Tangara {
         Err(FindTangaraError::NoTangara)
     }
 
-    pub fn setup_flash(self, firmware: Arc<firmware::Firmware>) -> (Flash, FlashTask) {
+    pub async fn setup_flash(self, firmware: Arc<firmware::Firmware>) -> (Flash, FlashTask) {
         let params = self.params.clone();
 
-        // drop our own connection before trying to reopen the port for flash
-        drop(self);
+        // disconnect before trying to  reopen the port for flash
+        self.connection.disconnect().await;
 
         flash::setup(params, firmware)
     }

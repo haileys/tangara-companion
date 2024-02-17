@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use adw::prelude::{ActionRowExt, PreferencesGroupExt, PreferencesPageExt};
 use futures::StreamExt;
+use futures::channel::mpsc::Receiver;
 use glib::object::Cast;
 use glib::types::StaticType;
 use glib::WeakRef;
@@ -10,7 +11,7 @@ use gtk::gio::{Cancellable, File};
 use gtk::prelude::{BoxExt, ButtonExt, FileExt, WidgetExt};
 
 use tangara_lib::firmware::Firmware;
-use tangara_lib::flash::{self, FlashError, FlashStatus};
+use tangara_lib::flash::{FlashError, FlashStatus};
 
 use crate::ui::application::DeviceContext;
 use crate::ui::label_row::LabelRow;
@@ -194,56 +195,71 @@ fn flash_page(ctx: UpdateContext, firmware: Arc<Firmware>) -> adw::NavigationPag
     let locked = ctx.device.nav.lock();
 
     // start flash now UI is built
-    let (mut flash, task) = ctx.device.tangara.clone().setup_flash(firmware);
-
-    // spawn blocking flash task
-    gtk::gio::spawn_blocking(move || task.run());
-
-    // progress handler
     glib::spawn_future_local(async move {
-        let mut current_image = None;
-        while let Some(progress) = flash.progress.next().await {
-            match progress {
-                FlashStatus::StartingFlash => {
-                    status_label.set_label("Starting flash")
-                }
-                FlashStatus::Image(image) => {
-                    status_label.set_label(&format!("Writing {image}..."));
-                    progress_bar.set_fraction(0.0);
-                    current_image = Some(image);
-                }
-                FlashStatus::Progress(written, total) => {
-                    if total != 0 {
-                        let progress = written as f64 / total as f64;
-                        progress_bar.set_fraction(progress);
-                    }
+        let (flash, task) = ctx.device.tangara
+            .setup_flash(firmware)
+            .await;
 
-                    if let Some(image) = &current_image {
-                        status_label.set_label(&format!("Writing {image}... block {written}/{total}"));
-                    }
-                }
-            }
-        }
-    });
+        // spawn blocking flash task
+        gtk::gio::spawn_blocking(move || task.run());
 
-    // result channel
-    glib::spawn_future_local(async move {
-        let Some(nav) = ctx.nav.upgrade() else { return };
+        // progress handler
+        glib::spawn_future_local(flash_progress_task(
+            flash.progress,
+            progress_bar,
+            status_label,
+        ));
 
-        let result = match flash.result.await {
-            Ok(Ok(())) => Ok(()),
-            Ok(Err(e)) => Err(Some(e)),
-            Err(_) => Err(None),
-        };
+        // result channel
+        glib::spawn_future_local(async move {
+            let Some(nav) = ctx.nav.upgrade() else { return };
 
-        nav.pop();
-        nav.push(&complete(result));
+            let result = match flash.result.await {
+                Ok(Ok(())) => Ok(()),
+                Ok(Err(e)) => Err(Some(e)),
+                Err(_) => Err(None),
+            };
 
-        // hold on to locked until the flash has returned a result
-        drop(locked);
+            nav.pop();
+            nav.push(&complete(result));
+
+            // hold on to locked until the flash has returned a result
+            drop(locked);
+        });
     });
 
     page
+}
+
+async fn flash_progress_task(
+    mut progress: Receiver<FlashStatus>,
+    progress_bar: gtk::ProgressBar,
+    status_label: gtk::Label,
+) {
+    let mut current_image = None;
+
+    while let Some(progress) = progress.next().await {
+        match progress {
+            FlashStatus::StartingFlash => {
+                status_label.set_label("Starting flash")
+            }
+            FlashStatus::Image(image) => {
+                status_label.set_label(&format!("Writing {image}..."));
+                progress_bar.set_fraction(0.0);
+                current_image = Some(image);
+            }
+            FlashStatus::Progress(written, total) => {
+                if total != 0 {
+                    let progress = written as f64 / total as f64;
+                    progress_bar.set_fraction(progress);
+                }
+
+                if let Some(image) = &current_image {
+                    status_label.set_label(&format!("Writing {image}... block {written}/{total}"));
+                }
+            }
+        }
+    }
 }
 
 fn complete(message: Result<(), Option<FlashError>>) -> adw::NavigationPage {
