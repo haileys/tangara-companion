@@ -91,4 +91,5 @@ wine "$WINE_PREFIX/drive_c/Program Files (x86)/Inno Setup 6/ISCC.exe" \
     "/DCargoTargetDir=$win_pwd\\target\\$TARGET\\$PROFILE" \
     "/DDistDir=$win_pwd\\dist\\$version" \
     "/DAppVersion=$version" \
+    "/DSetupExeName=tangaracompanion-windows-$ARCH" \
     pkg/windows/installer.iss
