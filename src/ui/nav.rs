@@ -50,7 +50,7 @@ impl MainView {
                     )
                     .add_item(
                         "Settings",
-                        "preferences-system-symbolic",
+                        "companion-settings-symbolic",
                         move |device| ui::settings::page(device),
                     )
                     .add_item(
