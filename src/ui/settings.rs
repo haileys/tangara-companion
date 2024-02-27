@@ -1,31 +1,38 @@
+use std::fmt::Debug;
+use std::time::Duration;
+
 use adw::prelude::{PreferencesPageExt, PreferencesGroupExt};
 use gtk::pango::EllipsizeMode;
 use gtk::prelude::{IsA, BoxExt, RangeExt, WidgetExt, ScaleExt};
 use gtk::Orientation;
+use tangara_lib::device::Tangara;
 
-use crate::settings;
+use crate::settings::{self, FromLuaOutput, Setting, ToLuaExpr};
 use crate::settings::{EnumSetting, IntRangeSetting};
 use crate::ui::application::DeviceContext;
 use crate::ui::util::NavPageBuilder;
+use crate::util::watch1;
 
 pub fn page(device: DeviceContext) -> adw::NavigationPage {
+    let tangara = &device.tangara;
+
     let pref = PageBuilder::new(
         adw::PreferencesPage::builder()
             .title("Settings")
             .build());
 
     pref.group("Headphones")
-        .row("Maximum volume limit", combo::<settings::audio::MaximumVolumeLimit>())
-        .row("Volume", range::<settings::audio::Volume>())
-        .row("Balance", range::<settings::audio::Balance>())
+        .row("Maximum volume limit", combo::<settings::audio::MaximumVolumeLimit>(tangara))
+        // .row("Volume", range::<settings::audio::Volume>())
+        .row("Balance", range::<settings::audio::Balance>(tangara))
         .build();
 
     pref.group("Display")
-        .row("Brightness", range::<settings::display::Brightness>())
+        .row("Brightness", range::<settings::display::Brightness>(tangara))
         .build();
 
     pref.group("Input")
-        .row("Input Method", combo::<settings::input::InputMethod>())
+        .row("Input Method", combo::<settings::input::InputMethod>(tangara))
         .build();
 
     NavPageBuilder::clamped(&pref.page)
@@ -33,29 +40,47 @@ pub fn page(device: DeviceContext) -> adw::NavigationPage {
         .build()
 }
 
-fn combo<T: EnumSetting>() -> gtk::DropDown {
+fn combo<T: EnumSetting + Debug + Clone>(tangara: &Tangara) -> gtk::DropDown {
     let list = gtk::StringList::default();
 
     for item in T::ITEMS {
         list.append(&item.to_string());
     }
 
-    let value = T::default(); // TODO get this from device
-
-    let selected = T::ITEMS.iter()
-        .position(|item| item == &value)
-        .and_then(|idx| u32::try_from(idx).ok())
-        .unwrap_or(0);
-
-    gtk::DropDown::builder()
+    let control = gtk::DropDown::builder()
         .model(&list)
-        .selected(selected)
-        .build()
+        .sensitive(false)
+        .build();
+
+    glib::spawn_future_local({
+        let conn = tangara.connection().clone();
+        let control = control.clone();
+        async move {
+            let value = T::PROPERTY.get(&conn).await.unwrap();
+
+            let selected = T::ITEMS.iter()
+                .position(|item| item == &value)
+                .and_then(|idx| u32::try_from(idx).ok())
+                .unwrap_or(0);
+
+            control.set_selected(selected);
+            control.set_sensitive(true);
+        }
+    });
+
+    control.connect_selected_item_notify({
+        let tx = setting_sender(tangara);
+        move |control| {
+            if let Some(value) = T::ITEMS.get(control.selected() as usize).cloned() {
+                tx.send(Some(value)).ok();
+            }
+        }
+    });
+
+    control
 }
 
-fn range<T: IntRangeSetting>() -> gtk::Scale {
-    let value = T::default(); // TODO get this from device
-
+fn range<T: IntRangeSetting + Debug>(tangara: &Tangara) -> gtk::Scale {
     let scale = gtk::Scale::with_range(
         Orientation::Horizontal,
         T::MIN as f64,
@@ -63,13 +88,60 @@ fn range<T: IntRangeSetting>() -> gtk::Scale {
         1.0,
     );
 
-    scale.set_value(value.into() as f64);
-
     for (notch, label) in T::NOTCHES {
         scale.add_mark(*notch as f64, gtk::PositionType::Bottom, *label);
     }
 
+    scale.set_sensitive(false);
+
+    glib::spawn_future_local({
+        let scale = scale.clone();
+        let conn = tangara.connection().clone();
+        async move {
+            let value = T::PROPERTY.get(&conn).await.unwrap();
+            let value = value.into();
+            scale.set_value(value as f64);
+            scale.set_sensitive(true);
+        }
+    });
+
+    scale.connect_change_value({
+        let tx = setting_sender(tangara);
+        move |_, _, value| {
+            let value = value as i32;
+            let value = T::from(value);
+            tx.send(Some(value)).ok();
+            glib::Propagation::Proceed
+        }
+    });
+
     scale
+}
+
+fn setting_sender<T: Setting + Debug>(tangara: &Tangara) -> watch1::Sender<Option<T>> {
+    let (tx, mut rx) = watch1::channel(None);
+    let connection = tangara.connection().clone();
+
+    glib::spawn_future_local(async move {
+        while let Some(value) = rx.recv().await {
+            let Some(value) = value else { continue };
+
+            log::info!("Setting property {}.{} to: {value:?}", T::PROPERTY.module, T::PROPERTY.property);
+
+            // try three times to set the value with a little delay each time
+            for _ in 1..3 {
+                match T::PROPERTY.set(&connection, &value).await {
+                    Ok(()) => { break }
+                    Err(error) => {
+                        log::warn!("error setting property: {error:?}");
+                        glib::timeout_future(Duration::from_millis(100)).await;
+                    }
+                }
+            }
+        }
+    });
+
+    tx
 }
 
 struct PageBuilder {

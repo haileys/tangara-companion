@@ -6,9 +6,10 @@ use std::sync::Arc;
 use serialport::{SerialPortInfo, UsbPortInfo, SerialPortType};
 use thiserror::Error;
 
-use crate::{flash::{Flash, FlashTask, self}, firmware};
+use crate::flash::{Flash, FlashTask, self};
+use crate::firmware;
 
-pub use connection::Connection;
+pub use connection::{Connection, LuaError};
 
 const USB_VID: u16 = 4617; // cool tech zone
 const USB_PID: u16 = 8212; // Tangara

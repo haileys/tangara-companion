@@ -1,3 +1,5 @@
+pub mod watch1;
+
 use glib::object::ObjectType;
 use glib::WeakRef;
 

@@ -134,14 +134,24 @@ async fn start_connection(port: Box<dyn SerialPort>)
             }
         }
 
-        let (tx, rx) = async_channel::bounded(32);
+        let (tx, mut rx) = async_channel::bounded(32);
         let _ = retn_tx.send(Ok(tx));
 
-        match run_connection(rx, port) {
-            Ok(()) => {}
-            Err(error) => {
-                // TODO signal this upwards with like an event or something
-                eprintln!("error running tangara connection: {error:?}");
+        loop {
+            match run_connection(&mut rx, &mut port) {
+                Ok(()) => {}
+                Err(ConnectionError::Sync(_)) => {
+                    // sleep and attempt to resync
+                    std::thread::sleep(Duration::from_millis(100));
+                    if let Err(error) = port.sync() {
+                        eprintln!("lost tangara connection sync, could not resync: {error:?}");
+                        break;
+                    }
+                }
+                Err(error) => {
+                    // TODO signal this upwards with like an event or something
+                    eprintln!("error running tangara connection: {error:?}");
+                }
             }
         }
     });
@@ -150,8 +160,8 @@ async fn start_connection(port: Box<dyn SerialPort>)
 }
 
 fn run_connection(
-    cmd_rx: async_channel::Receiver<Msg>,
-    mut port: Protocol,
+    cmd_rx: &mut async_channel::Receiver<Msg>,
+    port: &mut Protocol,
 ) -> Result<(), ConnectionError> {
     while let Some(cmd) = cmd_rx.recv_blocking().ok() {
         match cmd {
