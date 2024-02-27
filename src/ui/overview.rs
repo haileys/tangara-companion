@@ -48,7 +48,7 @@ pub fn page(device: DeviceContext) -> adw::NavigationPage {
 #[derive(Debug, Error)]
 enum FetchInfoError {
     #[error("connecting to device: {0}")]
-    Open(#[from] device::connection::OpenError),
+    Open(#[from] device::console::OpenError),
     #[error("querying device info: {0}")]
     Query(#[from] device::info::InfoError),
 }

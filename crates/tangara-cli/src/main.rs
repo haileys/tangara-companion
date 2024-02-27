@@ -150,9 +150,9 @@ async fn flash(args: FlashOpt) -> Result<ExitCode, FlashError> {
 #[derive(Debug, Error)]
 enum VersionError {
     #[error(transparent)]
-    OpenTangara(#[from] tangara_lib::device::connection::OpenError),
+    OpenTangara(#[from] tangara_lib::device::console::OpenError),
     #[error(transparent)]
-    FindVersion(#[from] tangara_lib::device::connection::LuaError),
+    FindVersion(#[from] tangara_lib::device::console::LuaError),
 }
 
 async fn tangara_version(params: &ConnectionParams) -> Result<String, VersionError> {

@@ -35,7 +35,7 @@ pub enum FindTangaraError {
 
 impl Tangara {
     pub async fn open(params: &ConnectionParams)
-        -> Result<Tangara, connection::OpenError>
+        -> Result<Tangara, console::OpenError>
     {
         let connection = Connection::open(&params.serial).await?;
 
