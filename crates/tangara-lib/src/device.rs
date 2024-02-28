@@ -1,4 +1,4 @@
-pub mod connection;
+// pub mod connection;
 pub mod info;
 
 use std::sync::Arc;
@@ -8,7 +8,7 @@ use thiserror::Error;
 
 use crate::{flash::{Flash, FlashTask, self}, firmware};
 
-pub use connection::Connection;
+// pub use connection::Connection;
 
 const USB_VID: u16 = 4617; // cool tech zone
 const USB_PID: u16 = 8212; // Tangara
