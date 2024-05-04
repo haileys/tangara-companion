@@ -8,7 +8,7 @@ use thiserror::Error;
 use crate::device::ConnectionParams;
 use crate::firmware::{Firmware, Image};
 
-const BAUD_RATE: u32 = 1500000;
+const BAUD_RATE: u32 = 1000000;
 
 pub enum FlashStatus {
     StartingFlash,
