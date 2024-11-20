@@ -29,7 +29,8 @@ pub struct FlashOpt {
     image: PathBuf,
 }
 
-fn main() -> ExitCode {
+#[tokio::main(flavor = "current_thread")]
+async fn main() -> ExitCode {
     let opt = Opt::from_args();
 
     match thread_executor::block_on(run(opt)) {

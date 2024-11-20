@@ -14,10 +14,10 @@ tangara-lib = { workspace = true }
 # workspace deps
 thiserror = { workspace = true }
 futures = { workspace = true }
+tokio = { workspace = true, features = ["macros"] }
 
 # general deps
 console = "0.15"
 indicatif = "0.17"
-thread-executor = "0.1.0"
 structopt = "0.3.26"
 

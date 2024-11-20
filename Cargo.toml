@@ -46,6 +46,9 @@ gtk = { version = "0.8", package = "gtk4", features = ["v4_12"] }
 glib = "*"
 gio = "*"
 
+# tokio
+tokio = { version = "1.36", features = ["rt"] }
+
 # general deps
 derive_more = "0.99"
 async-channel = "2.1"
