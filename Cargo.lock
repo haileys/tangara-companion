@@ -1930,9 +1930,9 @@ dependencies = [
 
 [[package]]
 name = "thread-executor"
-version = "0.1.0"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0b0d97573c7cda63e3ab3864ab71e7d28a57bea20e72506e96fd8a4d169ca2f2"
+checksum = "f1bedf74ef9870de41bb14b80902c9b3bae654a637781f37e82f015ac791dbaa"
 dependencies = [
  "pin-utils",
  "static_assertions",

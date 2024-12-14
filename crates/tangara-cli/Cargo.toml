@@ -18,6 +18,6 @@ futures = { workspace = true }
 # general deps
 console = "0.15"
 indicatif = "0.17"
-thread-executor = "0.1.0"
-structopt = "0.3.26"
+thread-executor = "0.2"
+structopt = "0.3"
 
