@@ -1,8 +1,9 @@
 #!/usr/bin/ruby
 require "fileutils"
 
+ARCH="x86_64"
 MACOS_KITS = ENV.fetch("MACOS_KITS")
-TOOL_PREFIX = "x86_64-apple-darwin23-"
+TOOL_PREFIX = "#{ARCH}-apple-darwin23-"
 
 def usage
   $stderr.puts "usage: install-dylibs.rb <bundle> -- <roots>"
@@ -78,7 +79,7 @@ class Image
   end
 
   def source_path
-    path.gsub(%r{\A@rpath/}, "#{MACOS_KITS}/gtk/lib/")
+    path.gsub(%r{\A@rpath/}, "#{MACOS_KITS}/gtk/#{ARCH}/lib/")
   end
 
   def rpaths
