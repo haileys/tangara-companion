@@ -35,7 +35,7 @@ cargo_args=()
 [[ "$PROFILE" == "release" ]] && cargo_args+="--release"
 
 # do the build
-log-command cargo build --target="$TARGET" "${cargo_args[@]}"
+log-command cargo build --target="$TARGET" "${cargo_args[@]}" --all
 
 # assemble macOS .app bundle
 info "Assembling 'Tangara Companion.app' bundle"
@@ -94,4 +94,9 @@ dist_dir="dist/$version"
 mkdir -p "$dist_dir"
 mv "$staging_dir/$zip_name" "$dist_dir/$zip_name"
 
+# copy cli into dist dir also
+cli_bin="tangara-cli-$version-macos-$ARCH"
+cp "$build_dir/tangara" "$dist_dir/$cli_bin"
+
 win "zipped app bundle written to $dist_dir/$zip_name"
+win "cli executable written to $dist_dir/$cli_bin"
