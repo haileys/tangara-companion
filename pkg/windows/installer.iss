@@ -68,15 +68,15 @@ Source: "{#GtkDir}\bin\libxml2.dll"; DestDir: "{app}\bin\"; Flags: ignoreversion
 Source: "{#GtkDir}\bin\pango-1.0-0.dll"; DestDir: "{app}\bin\"; Flags: ignoreversion
 Source: "{#GtkDir}\bin\pangocairo-1.0-0.dll"; DestDir: "{app}\bin\"; Flags: ignoreversion
 Source: "{#GtkDir}\bin\pangowin32-1.0-0.dll"; DestDir: "{app}\bin\"; Flags: ignoreversion
-Source: "{#GtkDir}\bin\pcre2-8.dll"; DestDir: "{app}\bin\"; Flags: ignoreversion
+Source: "{#GtkDir}\bin\pcre2-8-0.dll"; DestDir: "{app}\bin\"; Flags: ignoreversion
 Source: "{#GtkDir}\bin\pixman-1-0.dll"; DestDir: "{app}\bin\"; Flags: ignoreversion
-Source: "{#GtkDir}\bin\rsvg-2.0-vs17.dll"; DestDir: "{app}\bin\"; Flags: ignoreversion
+Source: "{#GtkDir}\bin\rsvg-2-2.dll"; DestDir: "{app}\bin\"; Flags: ignoreversion
 Source: "{#GtkDir}\bin\tiff.dll"; DestDir: "{app}\bin\"; Flags: ignoreversion
 Source: "{#GtkDir}\bin\zlib1.dll"; DestDir: "{app}\bin\"; Flags: ignoreversion
 
 ; rsvg dynamic loader for gdk-pixbuf
 Source: "{#GtkDir}\lib\gdk-pixbuf-2.0\2.10.0\loaders.cache"; DestDir: "{app}\lib\gdk-pixbuf-2.0\2.10.0\"; Flags: ignoreversion
-Source: "{#GtkDir}\lib\gdk-pixbuf-2.0\2.10.0\loaders\libpixbufloader-svg.dll"; DestDir: "{app}\lib\gdk-pixbuf-2.0\2.10.0\loaders\"; Flags: ignoreversion
+Source: "{#GtkDir}\lib\gdk-pixbuf-2.0\2.10.0\loaders\pixbufloader_svg.dll"; DestDir: "{app}\lib\gdk-pixbuf-2.0\2.10.0\loaders\"; Flags: ignoreversion
 
 ; NOTE: Don't use "Flags: ignoreversion" on any shared system files
 

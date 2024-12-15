@@ -22,8 +22,8 @@ check-command wine
 check-command winepath
 
 # check for gtk installation - build this on Windows with gvsbuild
-GTK4_KIT="$WINDOWS_KITS/gtk4"
-[ -d "$GTK4_KIT" ] || die "cannot find gtk4 kit in $GTK4_KIT"
+GTK_KIT="$WINDOWS_KITS/gtk"
+[ -d "$GTK_KIT" ] || die "cannot find gtk kit in $GTK_KIT"
 
 # check for windows sdk - grab this with xwin
 XWIN_KIT="$WINDOWS_KITS/xwin"
@@ -48,14 +48,15 @@ cl_flags=(
 
 rustflags=(
     -C link-arg=/STACK:8000000
-    -C "link-arg=/LIBPATH:$GTK4_KIT/$ARCH/lib"
+    -C "link-arg=/LIBPATH:$GTK_KIT/$ARCH/lib"
     "-Lnative=$XWIN_KIT/crt/lib/$ARCH"
     "-Lnative=$XWIN_KIT/sdk/lib/ucrt/$ARCH"
     "-Lnative=$XWIN_KIT/sdk/lib/um/$ARCH"
 )
 
 export PKG_CONFIG_ALLOW_CROSS=1
-export PKG_CONFIG_PATH="$GTK4_KIT/lib/pkgconfig"
+export PKG_CONFIG_ALLOW_SYSTEM_LIBS=0
+export PKG_CONFIG_LIBDIR="$GTK_KIT/$ARCH/lib/pkgconfig"
 
 export CC_x86_64_pc_windows_msvc=clang-cl
 export AR_x86_64_pc_windows_msvc=llvm-lib
@@ -70,7 +71,7 @@ export RUSTFLAGS="${rustflags[*]}"
 
 # do the build
 info "Compiling"
-log-command cargo build --target="$TARGET" "${cargo_args[@]}"
+log-command cargo build --target="$TARGET" "${cargo_args[@]}" --all
 
 # build the installer
 info "Building installer"
@@ -80,16 +81,23 @@ mkdir -p "$dist_dir"
 
 # convert unix paths to windows paths
 # winepath starts quite slowly so batch all the paths up into one call
-win_pwd="$(winepath --windows "$(pwd)" 2>/dev/null)"
-win_gtk4="$(winepath --windows "$GTK4_KIT/$ARCH" 2>/dev/null)"
+win_pwd="$(winepath --windows "$PWD" 2>/dev/null)"
+win_gtk="$(winepath --windows "$GTK_KIT/$ARCH" 2>/dev/null)"
+setup_exe_basename="tangaracompanion-$version-windows-$ARCH"
+cli_exe_basename="tangara-cli-$version-windows-$ARCH"
 
 : "${WINE_PREFIX:="$HOME/.wine"}"
 wine "$WINE_PREFIX/drive_c/Program Files (x86)/Inno Setup 6/ISCC.exe" \
     /Q /Qp \
     "/DProjectDir=$win_pwd" \
-    "/DGtkDir=$win_gtk4" \
+    "/DGtkDir=$win_gtk" \
     "/DCargoTargetDir=$win_pwd\\target\\$TARGET\\$PROFILE" \
     "/DDistDir=$win_pwd\\dist\\$version" \
     "/DAppVersion=$version" \
-    "/DSetupExeName=tangaracompanion-windows-$ARCH" \
+    "/DSetupExeName=$setup_exe_basename" \
     pkg/windows/installer.iss
+
+cp "$PWD/target/$TARGET/$PROFILE/tangara.exe" "$dist_dir/$cli_exe_basename.exe"
+
+win "windows installer written to $dist_dir/$setup_exe_basename.exe"
+win "windows cli written to $dist_dir/$cli_exe_basename.exe"
