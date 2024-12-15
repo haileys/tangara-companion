@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=Tangara Companion
+Comment=Companion app for Cool Tech Zone Tangara
+Type=Application
+Exec=tangara-companion
+Terminal=false
+Categories=Utility;GTK;
+Icon=zone.cooltech.tangara.Companion
+StartupNotify=true

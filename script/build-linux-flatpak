@@ -1,0 +1,47 @@
+#!/bin/bash
+### usage: build-linux-flatpak [opts..]
+###
+### Builds a Flatpak bundle for Linux
+
+set -euo pipefail
+cd "$(dirname "$0")/.."
+source script/lib/functions.sh
+source script/lib/error.sh
+
+# configure me!
+ARCH=x86_64
+BUILD_DIR="$PWD/target/flatpak"
+FLATPAK_REPO="$BUILD_DIR/repo"
+FLATPAK_STATE_DIR="$BUILD_DIR/flatpak-builder"
+
+# check for prerequisite commands
+check-command flatpak
+check-command flatpak-builder
+
+# grab version number from git
+version="$(git describe --tags)"
+info "Version $version"
+
+# build it:
+info "Building flatpak application"
+flatpak-builder \
+    --force-clean \
+    --user \
+    --install-deps-from=flathub \
+    --repo "$FLATPAK_REPO" \
+    --state-dir "$FLATPAK_STATE_DIR" \
+    "$BUILD_DIR/build" \
+    pkg/flatpak/zone.cooltech.tangara.Companion.yml
+
+# make dist dir
+dist_dir="dist/$version"
+flatpak_bundle="$dist_dir/tangaracompanion-$version-linux-$ARCH.flatpak"
+mkdir -p "$dist_dir"
+
+# export bundle
+info "Exporting flatpak bundle: $flatpak_bundle"
+flatpak build-bundle \
+    "$FLATPAK_REPO" \
+    "$flatpak_bundle" \
+    zone.cooltech.tangara.Companion \
+    stable

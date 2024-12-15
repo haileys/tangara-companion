@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Hailey Somerville <hailey@hails.org> -->
+<component type="desktop-application">
+  <id>zone.cooltech.tangara.Companion</id>
+  <metadata_license>CC0</metadata_license>
+  <project_license>GPL-3.0</project_license>
+  <name>Tangara Companion</name>
+  <summary>Companion app for Cool Tech Zone Tangara</summary>
+  <description>
+    <p>Companion app for Cool Tech Zone Tangara</p>
+  </description>
+  <url type="homepage">https://github.com/haileys/tangara-companion</url>
+  <developer_name>Hailey Somerville</developer_name>
+  <update_contact>hailey@hails.org</update_contact>
+  <launchable type="desktop-id">zone.cooltech.tangara.Companion.desktop</launchable>
+  <!--@RELEASES_XML@-->
+</component>

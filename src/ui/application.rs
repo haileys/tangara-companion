@@ -22,7 +22,7 @@ pub struct DeviceContext {
 impl Application {
     pub fn new(app: &adw::Application) -> Self {
         let style = gtk::CssProvider::new();
-        style.load_from_resource("/zone/cooltech/tangara/companion/style/console.css");
+        style.load_from_resource("/zone/cooltech/tangara/Companion/style/console.css");
 
         gtk::style_context_add_provider_for_display(
             &gtk::gdk::Display::default().unwrap(),
@@ -43,7 +43,7 @@ impl Application {
 
         if let Some(display) = gtk::gdk::Display::default() {
             let theme = gtk::IconTheme::for_display(&display);
-            theme.add_resource_path("/zone/cooltech/tangara/companion/icons");
+            theme.add_resource_path("/zone/cooltech/tangara/Companion/icons");
         }
 
         Application {

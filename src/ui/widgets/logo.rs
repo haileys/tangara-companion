@@ -34,8 +34,8 @@ pub fn logo() -> gtk::Picture {
 
 fn resource_path(style: &adw::StyleManager) -> &'static str {
     if style.is_dark() {
-        "/zone/cooltech/tangara/companion/assets/logo-dark.svg"
+        "/zone/cooltech/tangara/Companion/assets/logo-dark.svg"
     } else {
-        "/zone/cooltech/tangara/companion/assets/logo.svg"
+        "/zone/cooltech/tangara/Companion/assets/logo.svg"
     }
 }
