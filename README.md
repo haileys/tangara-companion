@@ -42,3 +42,37 @@ This is a bit of a process to setup initially, but the DX is great once all the 
     ```sh-session
     $ script/build-windows
     ```
+
+### Cross compiling for macOS
+
+0. Clone [osxcross](https://github.com/tpoechtrager/osxcross) and follow the instructions to download an Xcode SDK from Apple
+
+    ```sh-session
+    $ git clone https://github.com/tpoechtrager/osxcross
+    ```
+
+0. Build the macOS cross kits with osxcross:
+
+    ```sh-session
+    osxcross $ export SDK_VERSION=14
+    osxcross $ export TARGET_DIR=~/cross/macos-kits/osxcross
+    osxcross $ ./build.sh
+    osxcross $ ./build_compiler_rt.sh
+    ```
+
+   Follow the instructions given by `build_compiler.rt` to install the files to clang. You can also run the subsequent step under the `bwrap` tool bind mounting the right dirs in place instead of copying random stuff into your /usr prefix.
+
+0. Build a copy of the gtk4 libs using the [`macos` branch of my gtk-builder tool](https://github.com/haileys/gtk-builder/tree/macos).
+
+    ```sh-session
+    gtk-builder $ export TARGET_DIR=~/cross/macos-kits/gtk/x86_64
+    gtk-builder $ export RECIPE=macos-cross
+    gtk-builder $ export RECIPE_ARCH=x86_64
+    gtk-builder $ ./build all
+    ```
+
+0. You're ready to run the build!
+
+    ```sh-session
+    $ script/build-macos
+    ```
