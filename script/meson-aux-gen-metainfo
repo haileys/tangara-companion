@@ -1,0 +1,21 @@
+#!/usr/bin/env python
+import sys
+from datetime import date
+
+_, release_version, input_file, output_file = sys.argv
+
+releases_fragment = f"""
+  <releases>
+    <release version='{release_version}' date='{date.today()}'>
+      <description>
+        <p>Tangara Companion {release_version}</p>
+      </description>
+    </release>
+  </releases>
+"""
+
+input_xml = open(input_file).read()
+output_xml = input_xml.replace("<!--@RELEASES_XML@-->", releases_fragment)
+
+with open(output_file, "w") as f:
+    f.write(output_xml)
