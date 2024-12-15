@@ -84,7 +84,7 @@ async fn flash(args: FlashOpt) -> Result<ExitCode, FlashError> {
 
     let term = Term::stdout();
 
-    let params = Tangara::find().await?;
+    let params = Tangara::find()?;
 
     match tangara_version(&params).await {
         Ok(version) => {
