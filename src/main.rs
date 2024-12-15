@@ -9,7 +9,7 @@ use futures::StreamExt;
 use gtk::prelude::{ApplicationExt, ApplicationExtManual, GtkWindowExt};
 use log::LevelFilter;
 
-const APP_ID: &str = "zone.cooltech.tangara.companion";
+const APP_ID: &str = "zone.cooltech.tangara.Companion";
 
 fn main() -> glib::ExitCode {
     env_logger::builder()

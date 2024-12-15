@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <gresources>
-  <gresource prefix="/zone/cooltech/tangara/companion">
+  <gresource prefix="/zone/cooltech/tangara/Companion">
     <file preprocess="xml-stripblanks">assets/logo.svg</file>
     <file preprocess="xml-stripblanks">icons/breeze-status-success.svg</file>
     <file preprocess="xml-stripblanks">icons/scalable/actions/companion-firmware-update-symbolic.svg</file>
