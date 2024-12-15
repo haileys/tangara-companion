@@ -3,6 +3,7 @@ name = "tangara-companion"
 version = "0.4.1"
 edition = "2021"
 license = "GPL-3"
+authors = ["Hailey Somerville <tangaracompanion@hails.org>"]
 
 [dependencies]
 # GTK stack
@@ -42,7 +43,7 @@ tangara-lib = { path = "crates/tangara-lib" }
 
 # GTK stack
 adw = { version = "0.7", package = "libadwaita", features = ["v1_4", "gtk_v4_6"] }
-gtk = { version = "0.9", package = "gtk4", features = ["v4_12"] }
+gtk = { version = "0.9", package = "gtk4", features = ["v4_10"] }
 glib = "*"
 gio = "*"
 
