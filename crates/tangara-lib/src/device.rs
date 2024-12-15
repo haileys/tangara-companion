@@ -1,7 +1,6 @@
 pub mod connection;
 pub mod info;
 
-use std::io::ErrorKind;
 use std::sync::Arc;
 
 use serialport::{SerialPortInfo, UsbPortInfo, SerialPortType};
@@ -75,7 +74,7 @@ impl Tangara {
         match find_devtmpfs() {
             Ok(Some(params)) => { return Ok(params); }
             Ok(None) => {}
-            Err(error) if error.kind() == ErrorKind::NotFound => {}
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
             Err(error) => {
                 log::error!("error enumerating /dev/serial/by-id: {error}");
             }
