@@ -59,6 +59,7 @@ Source: "{#GtkDir}\bin\gobject-2.0-0.dll"; DestDir: "{app}\bin\"; Flags: ignorev
 Source: "{#GtkDir}\bin\graphene-1.0-0.dll"; DestDir: "{app}\bin\"; Flags: ignoreversion
 Source: "{#GtkDir}\bin\gtk-4-1.dll"; DestDir: "{app}\bin\"; Flags: ignoreversion
 Source: "{#GtkDir}\bin\harfbuzz.dll"; DestDir: "{app}\bin\"; Flags: ignoreversion
+Source: "{#GtkDir}\bin\harfbuzz-subset.dll"; DestDir: "{app}\bin\"; Flags: ignoreversion
 Source: "{#GtkDir}\bin\iconv.dll"; DestDir: "{app}\bin\"; Flags: ignoreversion
 Source: "{#GtkDir}\bin\intl.dll"; DestDir: "{app}\bin\"; Flags: ignoreversion
 Source: "{#GtkDir}\bin\jpeg62.dll"; DestDir: "{app}\bin\"; Flags: ignoreversion
