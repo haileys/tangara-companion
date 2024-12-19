@@ -131,9 +131,9 @@ fn render_size(bytes: u64) -> String {
     let kib = bytes / 1024;
     if kib < 1024 { return format!("{kib} KiB") }
 
-    let mib = bytes / 1024;
+    let mib = kib / 1024;
     if mib < 1024 { return format!("{mib} MiB") }
 
-    let gib = bytes / 1024;
+    let gib = mib / 1024;
     format!("{gib} GiB")
 }
