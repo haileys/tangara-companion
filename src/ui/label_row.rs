@@ -17,6 +17,7 @@ impl LabelRow {
             .ellipsize(EllipsizeMode::End)
             .css_classes(["dim-label"])
             .label(value)
+            .selectable(true)
             .build();
 
         let row = adw::ActionRow::builder()
