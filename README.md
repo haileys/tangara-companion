@@ -4,7 +4,7 @@
 
 ### Tips
 
-* If you're adding new svg assets or anything styled with particular colours, check that it looks good in both light and dark modes! Use the environment variables `ADW_DEBUG_COLOR_SCHEME=prefer-dark` and `ADW_DEBUG_COLOR_SCHEME=prefer-light`.
+* If you're adding new SVG assets or anything styled with particular colours, check that it looks good in both light and dark modes! Use the environment variables `ADW_DEBUG_COLOR_SCHEME=prefer-dark` and `ADW_DEBUG_COLOR_SCHEME=prefer-light`.
 
 ## Building
 
@@ -26,7 +26,7 @@ This is a bit of a process to setup initially, but the DX is great once all the 
     ~/cross/windows-kits $ xwin --accept-license splat --output xwin
     ```
 
-0. Build a copy of the gtk4 libs on a Windows machine using the [`tangara-companion` branch of my fork of gvsbuild](https://github.com/haileys/gvsbuild/tree/tangara-companion). There are some circular dependencies between some of the projects in the gtk4 stack, so you'll need to run the build a few times in a specific order. Here's what I find works:
+0. Build a copy of the GTK 4 libs on a Windows machine using the [`tangara-companion` branch of my fork of gvsbuild](https://github.com/haileys/gvsbuild/tree/tangara-companion). There are some circular dependencies between some of the projects in the GTK 4 stack, so you'll need to run the build a few times in a specific order. Here's what I find works:
 
     ```sh-session
     > poetry run gvsbuild build --build-dir gtk-build gtk4
@@ -62,7 +62,7 @@ This is a bit of a process to setup initially, but the DX is great once all the 
 
    Follow the instructions given by `build_compiler.rt` to install the files to clang. You can also run the subsequent step under the `bwrap` tool bind mounting the right dirs in place instead of copying random stuff into your /usr prefix.
 
-0. Build a copy of the gtk4 libs using the [`macos` branch of my gtk-builder tool](https://github.com/haileys/gtk-builder/tree/macos).
+0. Build a copy of the GTK 4 libraries using the [`macos` branch of my gtk-builder tool](https://github.com/haileys/gtk-builder/tree/macos).
 
     ```sh-session
     gtk-builder $ export TARGET_DIR=~/cross/macos-kits/gtk/x86_64
