@@ -1,5 +1,24 @@
 # Tangara Companion
 
+## Flashing via CLI
+If you don't want to use the GUI application, you can easily flash firmware to your Tangara if you have a [Rust toolchain installed](https://www.rust-lang.org/tools/install). Download a Tangara firmware release from https://codeberg.org/cool-tech-zone/tangara-fw/releases then, in a shell in this repository, run:
+
+```sh
+cargo run -p tangara-cli flash /path/to/tangarafw-v1.x.y.tra
+```
+
+You can install the CLI tool by running:
+
+```sh
+cargo install --path crates/tangara-cli
+```
+
+Then to flash:
+
+```sh
+tangara flash /path/to/tangarafw-v1.x.y.tra
+```
+
 ## Developing
 
 ### Tips
