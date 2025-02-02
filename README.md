@@ -8,6 +8,22 @@
 
 ## Building
 
+### Building on Linux
+
+The Linux build uses flatpak to distribute the binary.  You will need `flatpak-builder` installed, and you will need to make sure you have the flathub remote ref set up for your user:
+
+    ```sh-session
+    $ flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+    ```
+
+Then you can build and install with:
+
+    ```sh-session
+    $ script/build-linux-flatpak
+    ```
+
+The flatpak file will be in dist/[version] and you can `flatpak install` it from there.
+
 ### Cross compiling for Windows
 
 This is a bit of a process to setup initially, but the DX is great once all the pieces are in place. Here's how I do it:
