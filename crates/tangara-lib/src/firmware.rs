@@ -2,6 +2,7 @@ use std::io::{Read, self};
 use std::path::{Path, PathBuf};
 use std::fs::File;
 
+use crc32fast;
 use thiserror::Error;
 use zip::ZipArchive;
 use zip::result::ZipError;
@@ -40,6 +41,8 @@ pub enum ReadImageError {
     TooLarge(u64),
     #[error("I/O error: {0}")]
     Io(#[from] io::Error),
+    #[error("Checksum error: {0:X} (should be {1:X})")]
+    BadCRC(u32, u32)
 }
 
 impl Firmware {
@@ -138,11 +141,21 @@ fn read_images(zip: &mut ZipArchive<File>, firmware: &data::Firmware)
 
         log::debug!("image {} @ {:x?}, {} bytes", image.name, image.addr, data.len());
 
-        images.push(Image {
-            name: image.name.clone(),
-            addr: image.addr,
-            data: data,
-        });
+        let crc32 = zip.by_name(&image.name).unwrap().crc32();
+        let expected_crc32 = crc32fast::hash(&data);
+
+        if crc32 == expected_crc32 {
+            images.push(Image {
+                name: image.name.clone(),
+                addr: image.addr,
+                data: data,
+            });
+        } else {
+            return Err(OpenError::ReadImage(
+                image.name.clone(),
+                ReadImageError::BadCRC(crc32, expected_crc32)
+            ));
+        }
     }
 
     Ok(images)
