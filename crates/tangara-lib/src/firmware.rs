@@ -141,21 +141,11 @@ fn read_images(zip: &mut ZipArchive<File>, firmware: &data::Firmware)
 
         log::debug!("image {} @ {:x?}, {} bytes", image.name, image.addr, data.len());
 
-        let crc32 = zip.by_name(&image.name).unwrap().crc32();
-        let expected_crc32 = crc32fast::hash(&data);
-
-        if crc32 == expected_crc32 {
-            images.push(Image {
-                name: image.name.clone(),
-                addr: image.addr,
-                data: data,
-            });
-        } else {
-            return Err(OpenError::ReadImage(
-                image.name.clone(),
-                ReadImageError::BadCRC(crc32, expected_crc32)
-            ));
-        }
+        images.push(Image {
+            name: image.name.clone(),
+            addr: image.addr,
+            data: data,
+        });
     }
 
     Ok(images)
@@ -173,5 +163,12 @@ fn read_image_data(zip: &mut ZipArchive<File>, name: &str)
     let mut data = vec![0; size];
     file.read_exact(&mut data)?;
 
-    Ok(data)
+    let crc32 = file.crc32();
+    let expected_crc32 = crc32fast::hash(&data);
+
+    if crc32 != expected_crc32 {
+        Err(ReadImageError::BadCRC(crc32, expected_crc32))
+    } else {
+        Ok(data)
+    }
 }
