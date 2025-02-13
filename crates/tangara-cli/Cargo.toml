@@ -21,7 +21,7 @@ thiserror = { workspace = true }
 # general deps
 console = "0.15"
 indicatif = "0.17"
-reqwest = { version = "0.12", features = ["json"] }
+reqwest = { version = "0.12", features = ["json", "rustls-tls-native-roots"] }
 structopt = "0.3"
 tokio = { version = "1.43", features = ["macros", "net"] }
 tempfile = "3.16.0"
