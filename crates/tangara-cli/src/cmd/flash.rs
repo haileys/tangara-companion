@@ -13,6 +13,8 @@ use thiserror::Error;
 use tangara_lib::device::{Tangara, ConnectionParams};
 use tangara_lib::firmware::Firmware;
 
+use crate::device;
+
 #[derive(StructOpt)]
 pub struct FlashOpt {
     image: PathBuf,
@@ -33,7 +35,7 @@ pub enum FlashError {
     #[error("opening firmware: {0}")]
     Firmware(#[from] tangara_lib::firmware::OpenError),
     #[error(transparent)]
-    FindTangara(#[from] tangara_lib::device::FindTangaraError),
+    FindTangara(#[from] device::FindError),
     #[error(transparent)]
     Io(#[from] io::Error),
     #[error(transparent)]
@@ -42,24 +44,10 @@ pub enum FlashError {
 
 
 async fn flash(args: FlashOpt) -> Result<ExitCode, FlashError> {
+    let mut term = Term::stdout();
+
     let firmware = Firmware::open(&args.image).map(Arc::new)?;
-
-    let term = Term::stdout();
-
-    let params = Tangara::find()?;
-
-    match tangara_version(&params).await {
-        Ok(version) => {
-            writeln!(&term, "Found Tangara at {}, current firmware version {}",
-                    style(&params.serial.port_name).green(),
-                    style(&version).bold())?;
-        }
-        Err(error) => {
-            writeln!(&term, "Found Tangara at {}, cannot retrieve current firmware information: {}",
-                    style(&params.serial.port_name).green(),
-                    style(&format!("{error}")).yellow())?;
-        }
-    }
+    let params = device::find(&mut term).await?;
 
     // show confirmation prompt
     write!(&term, "Flash version {} to device? [y/n] ",
@@ -107,18 +95,4 @@ async fn flash(args: FlashOpt) -> Result<ExitCode, FlashError> {
     writeln!(&term, "{}", style("Flash success!").green())?;
 
     Ok(ExitCode::SUCCESS)
-}
-
-#[derive(Debug, Error)]
-enum VersionError {
-    #[error(transparent)]
-    OpenTangara(#[from] tangara_lib::device::connection::OpenError),
-    #[error(transparent)]
-    FindVersion(#[from] tangara_lib::device::connection::LuaError),
-}
-
-async fn tangara_version(params: &ConnectionParams) -> Result<String, VersionError> {
-    let tangara = Tangara::open(&params).await?;
-    let version = tangara.connection().firmware_version().await?;
-    Ok(version)
 }

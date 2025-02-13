@@ -40,15 +40,20 @@ pub enum LuaError {
     InvalidUtf8(#[from] FromUtf8Error),
 }
 
+pub type SerialPortError = serialport::Error;
+
+pub fn open_serial(serial_port: &SerialPortInfo) -> Result<Box<dyn SerialPort>, SerialPortError> {
+    serialport::new(&serial_port.port_name, CONSOLE_BAUD_RATE)
+        .data_bits(DataBits::Eight)
+        .stop_bits(StopBits::One)
+        .timeout(CONSOLE_TIMEOUT)
+        .flow_control(FlowControl::None)
+        .open()
+}
+
 impl Connection {
     pub async fn open(serial_port: &SerialPortInfo) -> Result<Connection, OpenError> {
-        let port = serialport::new(&serial_port.port_name, CONSOLE_BAUD_RATE)
-            .data_bits(DataBits::Eight)
-            .stop_bits(StopBits::One)
-            .timeout(CONSOLE_TIMEOUT)
-            .flow_control(FlowControl::None)
-            .open()?;
-
+        let port = open_serial(serial_port)?;
         let tx = start_connection(port).await?;
 
         Ok(Connection { tx })

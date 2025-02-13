@@ -4,7 +4,8 @@ use console::{Term, style};
 use structopt::StructOpt;
 use thiserror::Error;
 
-mod flash;
+mod cmd;
+mod device;
 
 #[derive(StructOpt)]
 pub struct Opt {
@@ -14,7 +15,13 @@ pub struct Opt {
 
 #[derive(StructOpt)]
 pub enum Cmd {
-    Flash(flash::FlashOpt)
+    Flash(cmd::flash::FlashOpt),
+}
+
+#[derive(Error, Debug)]
+enum RunError {
+    #[error(transparent)]
+    Flash(#[from] cmd::flash::FlashError),
 }
 
 fn main() -> ExitCode {
@@ -33,14 +40,8 @@ fn main() -> ExitCode {
     }
 }
 
-#[derive(Error, Debug)]
-enum RunError {
-    #[error(transparent)]
-    Flash(#[from] flash::FlashError),
-}
-
 async fn run(opt: Opt) -> Result<ExitCode, RunError> {
     match opt.cmd {
-        Cmd::Flash(args) => Ok(flash::run(args).await?),
+        Cmd::Flash(args) => Ok(cmd::flash::run(args).await?),
     }
 }
