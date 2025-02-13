@@ -1,5 +1,5 @@
 use std::io::{Write, self};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 use std::sync::Arc;
 
@@ -10,10 +10,10 @@ use structopt::StructOpt;
 use tangara_lib::flash::{FlashStatus, self};
 use thiserror::Error;
 
-use tangara_lib::device::{Tangara, ConnectionParams};
 use tangara_lib::firmware::Firmware;
 
-use crate::device;
+use crate::device::{self, FoundDevice};
+use crate::util::confirm;
 
 #[derive(StructOpt)]
 pub struct FlashOpt {
@@ -21,7 +21,7 @@ pub struct FlashOpt {
 }
 
 pub async fn run(args: FlashOpt) -> Result<ExitCode, FlashError> {
-    match flash(args).await {
+    match flash_confirm(args).await {
         // turn writeln! io errors into failure exits:
         Err(FlashError::Io(_)) => Ok(ExitCode::FAILURE),
         // pass thru all other results:
@@ -42,35 +42,28 @@ pub enum FlashError {
     Flash(#[from] tangara_lib::flash::FlashError),
 }
 
-
-async fn flash(args: FlashOpt) -> Result<ExitCode, FlashError> {
+async fn flash_confirm(args: FlashOpt) -> Result<ExitCode, FlashError> {
     let mut term = Term::stdout();
+    let device = device::find(&mut term).await?;
+    flash(&mut term, &args.image, device).await
+}
 
-    let firmware = Firmware::open(&args.image).map(Arc::new)?;
-    let params = device::find(&mut term).await?;
+pub async fn flash(term: &mut Term, firmware_path: &Path, device: FoundDevice) -> Result<ExitCode, FlashError> {
+    let firmware = Firmware::open(&firmware_path).map(Arc::new)?;
 
     // show confirmation prompt
-    write!(&term, "Flash version {} to device? [y/n] ",
+    write!(term, "Flash version {} to device? [y/n] ",
         style(firmware.version()).bold())?;
     term.flush()?;
 
-    // read key and echo it
-    let char = term.read_char()?;
-    write!(&term, "{char}")?;
-    term.flush()?;
-
-    // check user response
-    match char {
-        'y' | 'Y' => {}
-        _ => { return Ok(ExitCode::FAILURE); }
+    if !confirm(term) {
+        return Ok(ExitCode::FAILURE)
     }
-
-    writeln!(&term)?;
 
     let progress_bar = ProgressBar::new(1);
     progress_bar.set_message("Starting flash");
 
-    let (mut flash, task) = flash::setup(Arc::new(params), firmware);
+    let (mut flash, task) = flash::setup(Arc::new(device.params), firmware);
     std::thread::spawn(move || task.run());
 
     while let Some(progress) = flash.progress.next().await {
@@ -92,7 +85,7 @@ async fn flash(args: FlashOpt) -> Result<ExitCode, FlashError> {
 
     flash.result.await.unwrap()?;
 
-    writeln!(&term, "{}", style("Flash success!").green())?;
+    writeln!(term, "{}", style("Flash success!").green())?;
 
     Ok(ExitCode::SUCCESS)
 }

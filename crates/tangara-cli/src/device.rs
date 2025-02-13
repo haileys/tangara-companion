@@ -1,6 +1,7 @@
 use std::io::Write;
 
 use console::{Term, style};
+use semver::Version;
 use thiserror::Error;
 
 use tangara_lib::device::{ConnectionParams, Tangara};
@@ -11,23 +12,30 @@ pub enum FindError {
     FindTangara(#[from] tangara_lib::device::FindTangaraError),
 }
 
-pub async fn find(term: &mut Term) -> Result<ConnectionParams, FindError> {
+pub struct FoundDevice {
+    pub params: ConnectionParams,
+    pub version: Option<Version>,
+}
+
+pub async fn find(term: &mut Term) -> Result<FoundDevice, FindError> {
     let params = Tangara::find()?;
 
-    match tangara_version(&params).await {
+    let version = match tangara_version(&params).await {
         Ok(version) => {
             let _ = writeln!(term, "Found Tangara at {}, current firmware version {}",
                 style(&params.serial.port_name).green(),
                 style(&version).bold());
+            Some(version)
         }
         Err(error) => {
             let _ = writeln!(term, "Found Tangara at {}, cannot retrieve current firmware information: {}",
                 style(&params.serial.port_name).green(),
                 style(&format!("{error}")).yellow());
+            None
         }
-    }
+    };
 
-    Ok(params)
+    Ok(FoundDevice { params, version })
 }
 
 #[derive(Debug, Error)]
@@ -36,10 +44,12 @@ enum VersionError {
     OpenTangara(#[from] tangara_lib::device::connection::OpenError),
     #[error(transparent)]
     FindVersion(#[from] tangara_lib::device::connection::LuaError),
+    #[error("parsing device firmware version: {0}")]
+    ParseVersion(#[from] semver::Error),
 }
 
-async fn tangara_version(params: &ConnectionParams) -> Result<String, VersionError> {
+async fn tangara_version(params: &ConnectionParams) -> Result<Version, VersionError> {
     let tangara = Tangara::open(&params).await?;
     let version = tangara.connection().firmware_version().await?;
-    Ok(version)
+    Ok(Version::parse(&version)?)
 }

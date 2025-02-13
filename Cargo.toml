@@ -48,10 +48,13 @@ glib = "*"
 gio = "*"
 
 # general deps
-derive_more = "0.99"
 async-channel = "2.1"
+derive_more = "0.99"
 futures = "0.3"
 log = "0.4"
+semver = "1.0"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
 serialport = "4.3"
 thiserror = "1.0"
 
