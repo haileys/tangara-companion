@@ -16,6 +16,7 @@ futures = { workspace = true }
 semver = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
+serialport = { workspace = true }
 thiserror = { workspace = true }
 
 # general deps
