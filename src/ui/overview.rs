@@ -119,7 +119,7 @@ fn database_group(database: &info::Database) -> adw::PreferencesGroup {
 
 fn render_size(bytes: u64) -> String {
     if bytes < 1024 {
-        return format!("{bytes} b");
+        return format!("{bytes} B");
     }
 
     let kib = bytes / 1024;
