@@ -7,7 +7,7 @@ use crate::ui::application::DeviceContext;
 use crate::ui::label_row::LabelRow;
 use crate::ui::util::spinner_content;
 
-use tangara_lib::device::{self, Tangara, info};
+use tangara_lib::device::{self, info, Tangara};
 
 pub fn page(device: DeviceContext) -> adw::NavigationPage {
     let header = adw::HeaderBar::new();
@@ -18,9 +18,7 @@ pub fn page(device: DeviceContext) -> adw::NavigationPage {
 
     view.add_top_bar(&header);
 
-    let page = adw::NavigationPage::builder()
-        .title("Overview")
-        .build();
+    let page = adw::NavigationPage::builder().title("Overview").build();
 
     page.set_child(Some(&view));
 
@@ -59,8 +57,7 @@ async fn fetch_info(tangara: &Tangara) -> Result<device::info::Info, FetchInfoEr
 }
 
 fn show_info(device: DeviceContext, info: &device::info::Info) -> adw::PreferencesPage {
-    let title_group = adw::PreferencesGroup::builder()
-        .build();
+    let title_group = adw::PreferencesGroup::builder().build();
 
     let title_logo = ui::widgets::logo::logo();
     title_logo.set_can_shrink(false);
@@ -83,8 +80,7 @@ fn show_info(device: DeviceContext, info: &device::info::Info) -> adw::Preferenc
 }
 
 fn device_group(tangara: &Tangara) -> adw::PreferencesGroup {
-    let group = adw::PreferencesGroup::builder()
-        .build();
+    let group = adw::PreferencesGroup::builder().build();
 
     let port = LabelRow::new("Serial port", tangara.serial_port_name());
     group.add(&*port);
@@ -93,9 +89,7 @@ fn device_group(tangara: &Tangara) -> adw::PreferencesGroup {
 }
 
 fn firmware_group(firmware: &info::Firmware) -> adw::PreferencesGroup {
-    let group = adw::PreferencesGroup::builder()
-        .title("Firmware")
-        .build();
+    let group = adw::PreferencesGroup::builder().title("Firmware").build();
 
     let version = LabelRow::new("Version", &firmware.version);
     group.add(&*version);
@@ -110,9 +104,7 @@ fn firmware_group(firmware: &info::Firmware) -> adw::PreferencesGroup {
 }
 
 fn database_group(database: &info::Database) -> adw::PreferencesGroup {
-    let group = adw::PreferencesGroup::builder()
-        .title("Database")
-        .build();
+    let group = adw::PreferencesGroup::builder().title("Database").build();
 
     let schema = LabelRow::new("Schema version", &database.schema_version);
     group.add(&*schema);
@@ -126,14 +118,28 @@ fn database_group(database: &info::Database) -> adw::PreferencesGroup {
 }
 
 fn render_size(bytes: u64) -> String {
-    if bytes < 1024 { return format!("{bytes} b") }
+    if bytes < 1024 {
+        return format!("{bytes} b");
+    }
 
     let kib = bytes / 1024;
-    if kib < 1024 { return format!("{kib} KiB") }
+    if kib < 1024 {
+        return format!("{kib} KiB");
+    }
 
-    let mib = kib / 1024;
-    if mib < 1024 { return format!("{mib} MiB") }
+    let mib = (kib as f64) / 1024.0;
+    if mib < 1024.0 {
+        let prec = match mib {
+            1.0..10.0 => 1,
+            _ => 0,
+        };
+        return format!("{mib:.*} MiB", prec);
+    }
 
-    let gib = mib / 1024;
-    format!("{gib} GiB")
+    let gib = mib / 1024.0;
+    let prec = match gib {
+        1.0..10.0 => 1,
+        _ => 0,
+    };
+    format!("{gib:.*} GiB", prec)
 }
