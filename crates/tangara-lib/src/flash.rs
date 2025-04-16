@@ -1,9 +1,13 @@
 use std::sync::Arc;
 
+use espflash::{
+    connection::reset::{ResetAfterOperation, ResetBeforeOperation},
+    flasher::{Flasher, ProgressCallbacks},
+    targets::Chip,
+};
 use futures::channel::{mpsc, oneshot};
-use espflash::interface::Interface;
-use espflash::flasher::{Flasher, ProgressCallbacks};
 use thiserror::Error;
+use serialport::FlowControl;
 
 use crate::device::ConnectionParams;
 use crate::firmware::{Firmware, Image};
@@ -53,7 +57,7 @@ impl FlashTask {
 #[derive(Debug, Error)]
 pub enum FlashError {
     #[error("opening usb serial interface: {0}")]
-    OpenInterface(String),
+    OpenSerial(#[from] serialport::Error),
     #[error("connecting to device: {0}")]
     Connect(#[source] espflash::error::Error),
     #[error("writing image: {0}: {1}")]
@@ -77,13 +81,25 @@ fn run_flash(
 fn flash_image(
     port: &ConnectionParams,
     image: &Image,
-    sender: &mpsc::Sender<FlashStatus>
+    sender: &mpsc::Sender<FlashStatus>,
 ) -> Result<(), FlashError> {
-    let interface = Interface::new(&port.serial, None, None)
-        .map_err(|error| FlashError::OpenInterface(format!("{}", error)))?;
+    let serial = serialport::new(&port.serial.port_name, 115_200)
+        .flow_control(FlowControl::None)
+        .open_native()
+        .map_err(FlashError::OpenSerial)?;
 
-    let mut flasher = Flasher::connect(interface, port.usb.clone(), Some(BAUD_RATE), true)
-        .map_err(FlashError::Connect)?;
+    let mut flasher = Flasher::connect(
+        serial,
+        port.usb.clone(),
+        Some(BAUD_RATE),
+        true,
+        false,
+        false,
+        Some(Chip::Esp32),
+        ResetAfterOperation::HardReset,
+        ResetBeforeOperation::DefaultReset,
+    )
+    .map_err(FlashError::Connect)?;
 
     let mut progress = ProgressCallback {
         image: image.name.clone(),
@@ -91,7 +107,8 @@ fn flash_image(
         sender: sender.clone(),
     };
 
-    flasher.write_bin_to_flash(image.addr, &image.data, Some(&mut progress))
+    flasher
+        .write_bin_to_flash(image.addr, &image.data, Some(&mut progress))
         .map_err(|error| FlashError::WriteBin(image.name.clone(), error))?;
 
     Ok(())
