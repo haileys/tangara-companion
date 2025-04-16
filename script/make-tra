@@ -3,24 +3,22 @@
 ###
 ### options:
 ###   --help                  This help
-###   --output <path>         Where to write generated release archive, defaults to tangarafw.tra
+###   --outputdir <path>      Where to write generated release archive, defaults to current directory
 ###   --version <version>     Version to write to release archive, reads from firmware image by default
-###   --firmware <path>       Path to main firmware binary, defaults to tangara.bin
-###   --lua <path>            Path to lua code binary, defaults to lua.bin
+###   --fwrepo <path>         Path to main firmware repository with built firmware images, defaults to tangara-fw
 
 set -euo pipefail
 source "$(dirname "$0")/../script/lib/functions.sh"
 
 # read command line options
-TANGARA_BIN=tangara.bin
-LUA_BIN=lua.bin
-OUTPUT=tangarafw.tra
+FIRMWARE_REPO=tangara-fw
+OUTPUT_DIR="$PWD"
 VERSION=
 while [ "$#" -gt 0 ]; do
     case "$1" in
-        --output)
+        --outputdir)
             [ "$#" -ge 2 ] || usage
-            OUTPUT="$2"
+            OUTPUT_DIR="$2"
             shift
             shift
             ;;
@@ -30,15 +28,9 @@ while [ "$#" -gt 0 ]; do
             shift
             shift
             ;;
-        --firmware)
+        --fwrepo)
             [ "$#" -ge 2 ] || usage
-            TANGARA_BIN="$2"
-            shift
-            shift
-            ;;
-        --lua)
-            [ "$#" -ge 2 ] || usage
-            LUA_BIN="$2"
+            FIRMWARE_REPO="$2"
             shift
             shift
             ;;
@@ -58,22 +50,22 @@ check-command dd
 check-command tr
 check-command zip
 
-# validate existence of firmware images
-[ -e "$TANGARA_BIN" ] || die "firmware image not found: $TANGARA_BIN"
-[ -e "$LUA_BIN" ] || die "lua image not found: $LUA_BIN"
+if ! [ -f "$FIRMWARE_REPO/build/tangara.bin" ]; then
+    die "Firmware not found. Use --fwrepo to specify directory of tangara-fw repository containing built firmware"
+fi
 
 # read version out of firmware image
-[ -n "$VERSION" ] || VERSION="$(dd if="$TANGARA_BIN" bs=16 count=1 skip=3 status=none | tr -d '\000')" || die "reading version from firmware image"
+[ -n "$VERSION" ] || VERSION="$(dd if="$FIRMWARE_REPO/build/tangara.bin" bs=16 count=1 skip=3 status=none | tr -d '\000')" || die "reading version from firmware image"
 [ -n "$VERSION" ] || die "no version in firmware image"
 echo "$(tput setaf 4 bold)Found firmware version:$(tput sgr0) $(tput bold)${VERSION}$(tput sgr0)"
+OUTPUT_FILENAME="tangarafw-v$VERSION.tra"
 
 # create staging dir for zip
 TMP_DIR="/tmp/make-tra-$$"
 mkdir -p "$TMP_DIR" || die "creating staging dir: $TMP_DIR"
 
 # write the needful
-cp "$TANGARA_BIN" "$TMP_DIR/tangara.bin" || die "copying firmware image to staging dir"
-cp "$LUA_BIN" "$TMP_DIR/lua.bin" || die "copying lua image to staging dir"
+cp "$FIRMWARE_REPO/build/bootloader/bootloader.bin" "$FIRMWARE_REPO/build/partition_table/partition-table.bin" "$FIRMWARE_REPO/build/ota_data_initial.bin" "$FIRMWARE_REPO/build/tangara.bin" "$FIRMWARE_REPO/tools/collate/Generic.LC_COLLATE" "$FIRMWARE_REPO/build/lua.bin" "$FIRMWARE_REPO/build/repl.bin" "$TMP_DIR" || die "copying firmware images to staging dir"
 cat > "$TMP_DIR/tangaraflash.json" <<JSON || die "writing json manifest to staging dir"
     {
         "version": 0,
@@ -81,8 +73,13 @@ cat > "$TMP_DIR/tangaraflash.json" <<JSON || die "writing json manifest to stagi
             "firmware": {
                 "version": "$VERSION",
                 "images": [
+                    { "addr": 4096, "name": "bootloader.bin" },
+                    { "addr": 32768, "name": "partition-table.bin" },
+                    { "addr": 53248, "name": "ota_data_initial.bin" },
                     { "addr": 65536, "name": "tangara.bin" },
-                    { "addr": 11599872, "name": "lua.bin" }
+                    { "addr": 8454144, "name": "Generic.LC_COLLATE" },
+                    { "addr": 11599872, "name": "lua.bin" },
+                    { "addr": 15794176, "name": "repl.bin" }
                 ]
             }
         }
@@ -90,9 +87,9 @@ cat > "$TMP_DIR/tangaraflash.json" <<JSON || die "writing json manifest to stagi
 JSON
 
 # generate the TRA (Tangara Release Archive)
-(cd "$TMP_DIR" && zip -9 tangarafw.tra tangaraflash.json tangara.bin lua.bin) || die "creating zip archive"
+(cd "$TMP_DIR" && zip -9 $OUTPUT_FILENAME tangaraflash.json bootloader.bin partition-table.bin ota_data_initial.bin tangara.bin Generic.LC_COLLATE lua.bin repl.bin) || die "creating zip archive"
 
 # move built TRA back to source dir
-mv "$TMP_DIR/tangarafw.tra" "$OUTPUT" || die "writing output archive"
+mv "$TMP_DIR/$OUTPUT_FILENAME" "$OUTPUT_DIR" || die "writing output archive"
 
-win "created $OUTPUT"
+win "created $OUTPUT_DIR/$OUTPUT_FILENAME"
