@@ -33,6 +33,8 @@ enum RunError {
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> ExitCode {
+    pretty_env_logger::init();
+
     let opt = Opt::from_args();
 
     match run(opt).await {
