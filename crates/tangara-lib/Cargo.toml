@@ -15,7 +15,7 @@ serialport = { workspace = true }
 thiserror = { workspace = true }
 
 # general deps
-espflash = { version = "3.3", default-features = false, features = [ "serialport" ] }
+espflash = { version = "4.0", default-features = false, features = [ "serialport" ] }
 zip = { version = "0.6", default-features = false, features = ["deflate"] }
 crc32fast = "1.4.2"
 

@@ -1,13 +1,14 @@
 use std::sync::Arc;
 
 use espflash::{
-    connection::reset::{ResetAfterOperation, ResetBeforeOperation},
-    flasher::{Flasher, ProgressCallbacks},
-    targets::Chip,
+    connection::{Connection, ResetAfterOperation, ResetBeforeOperation},
+    flasher::Flasher,
+    target::Chip,
+    target::ProgressCallbacks,
 };
 use futures::channel::{mpsc, oneshot};
-use thiserror::Error;
 use serialport::FlowControl;
+use thiserror::Error;
 
 use crate::device::ConnectionParams;
 use crate::firmware::{Firmware, Image};
@@ -59,9 +60,9 @@ pub enum FlashError {
     #[error("opening usb serial interface: {0}")]
     OpenSerial(#[from] serialport::Error),
     #[error("connecting to device: {0}")]
-    Connect(#[source] espflash::error::Error),
+    Connect(#[source] espflash::Error),
     #[error("writing image: {0}: {1}")]
-    WriteBin(String, #[source] espflash::error::Error),
+    WriteBin(String, #[source] espflash::Error),
 }
 
 fn run_flash(
@@ -83,21 +84,28 @@ fn flash_image(
     image: &Image,
     sender: &mpsc::Sender<FlashStatus>,
 ) -> Result<(), FlashError> {
-    let serial = serialport::new(&port.serial.port_name, 115_200)
+    let connection_baud = 115_200;
+
+    let serial = serialport::new(&port.serial.port_name, connection_baud)
         .flow_control(FlowControl::None)
         .open_native()
         .map_err(FlashError::OpenSerial)?;
 
-    let mut flasher = Flasher::connect(
+    let connection = Connection::new(
         serial,
         port.usb.clone(),
-        Some(BAUD_RATE),
+        ResetAfterOperation::HardReset,
+        ResetBeforeOperation::DefaultReset,
+        connection_baud,
+    );
+
+    let mut flasher = Flasher::connect(
+        connection,
         true,
         false,
         false,
         Some(Chip::Esp32),
-        ResetAfterOperation::HardReset,
-        ResetBeforeOperation::DefaultReset,
+        Some(BAUD_RATE),
     )
     .map_err(FlashError::Connect)?;
 
@@ -108,7 +116,7 @@ fn flash_image(
     };
 
     flasher
-        .write_bin_to_flash(image.addr, &image.data, Some(&mut progress))
+        .write_bin_to_flash(image.addr, &image.data, &mut progress)
         .map_err(|error| FlashError::WriteBin(image.name.clone(), error))?;
 
     Ok(())
@@ -133,8 +141,12 @@ impl ProgressCallbacks for ProgressCallback {
         let _ = self.sender.try_send(status);
     }
 
-    fn finish(&mut self) {
+    fn finish(&mut self, _skipped: bool) {
         let status = FlashStatus::Progress(self.total, self.total);
         let _ = self.sender.try_send(status);
+    }
+
+    fn verifying(&mut self) {
+        todo!()
     }
 }
