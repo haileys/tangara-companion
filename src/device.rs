@@ -1,13 +1,13 @@
 use std::time::Duration;
 
-use futures::{future, SinkExt, Stream, StreamExt};
+use futures::{SinkExt, Stream,};
 use futures::channel::mpsc;
 use gtk::glib;
 use tangara_lib::device::{ConnectionParams, Tangara};
 
 const POLL_DURATION: Duration = Duration::from_secs(1);
 
-fn watch_port() -> impl Stream<Item = Option<ConnectionParams>> {
+pub fn watch_port() -> impl Stream<Item = Option<ConnectionParams>> {
     let (mut tx, rx) = mpsc::channel(1);
 
     glib::spawn_future_local(async move {
@@ -35,18 +35,4 @@ fn watch_port() -> impl Stream<Item = Option<ConnectionParams>> {
     });
 
     rx
-}
-
-pub fn watch() -> impl Stream<Item = Option<Tangara>> {
-    watch_port()
-        .then(|params| async move {
-            log::debug!("watch: new params: {params:?}");
-            match params {
-                Some(params) => Tangara::open(&params).await.map(Some),
-                None => Ok(None),
-            }
-        })
-        .filter_map(|result| future::ready(result
-            .map_err(|error| { eprintln!("error opening tangara: {error:?}"); })
-            .ok()))
 }

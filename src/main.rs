@@ -1,11 +1,9 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod device;
-mod flash;
 mod ui;
 mod util;
 
-use futures::StreamExt;
 use gtk::prelude::{ApplicationExt, ApplicationExtManual, GtkWindowExt};
 use log::LevelFilter;
 
@@ -30,15 +28,6 @@ fn main() -> glib::ExitCode {
 }
 
 fn start(app: &adw::Application) {
-    let app = ui::Application::new(app);
+    let app = ui::run_application(app);
     app.present();
-
-    glib::spawn_future_local(async move {
-        let mut watch = Box::pin(device::watch());
-        while let Some(tangara) = watch.next().await {
-            log::debug!("setting tangara: {tangara:?}");
-            app.set_tangara(tangara);
-        }
-        log::debug!("falling out of set tangara loop");
-    });
 }

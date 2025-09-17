@@ -79,25 +79,30 @@ fn run_flash(
     Ok(())
 }
 
-fn flash_image(
-    port: &ConnectionParams,
-    image: &Image,
-    sender: &mpsc::Sender<FlashStatus>,
-) -> Result<(), FlashError> {
+pub fn open_flash_connection(port: &ConnectionParams)
+    -> Result<espflash::connection::Connection, serialport::Error>
+{
     let connection_baud = 115_200;
 
     let serial = serialport::new(&port.serial.port_name, connection_baud)
         .flow_control(FlowControl::None)
-        .open_native()
-        .map_err(FlashError::OpenSerial)?;
+        .open_native()?;
 
-    let connection = Connection::new(
+    Ok(Connection::new(
         serial,
         port.usb.clone(),
         ResetAfterOperation::HardReset,
         ResetBeforeOperation::DefaultReset,
         connection_baud,
-    );
+    ))
+}
+
+fn flash_image(
+    port: &ConnectionParams,
+    image: &Image,
+    sender: &mpsc::Sender<FlashStatus>,
+) -> Result<(), FlashError> {
+    let connection = open_flash_connection(port)?;
 
     let mut flasher = Flasher::connect(
         connection,

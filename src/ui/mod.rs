@@ -1,4 +1,5 @@
 mod application;
+mod connecting;
 mod label_row;
 mod lua;
 mod nav;
@@ -8,4 +9,4 @@ mod util;
 mod welcome;
 mod widgets;
 
-pub use application::Application;
+pub use application::run_application;

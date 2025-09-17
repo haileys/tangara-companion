@@ -1,15 +1,16 @@
-use std::cell::Cell;
+use std::cell::{Cell, RefCell};
 use std::rc::{Rc, Weak};
 
 use adw::prelude::BinExt;
 use derive_more::Deref;
 use glib::WeakRef;
-use gtk::prelude::{GridExt, WidgetExt, ListBoxRowExt};
+use gtk::prelude::{ButtonExt, GridExt, ListBoxRowExt, WidgetExt};
 
-use tangara_lib::device::Tangara;
+use tangara_lib::device::{ConnectionParams, Tangara};
 
 use crate::ui;
-use super::application::DeviceContext;
+use crate::ui::application::DeviceContext;
+use crate::ui::util::NavPageBuilder;
 
 #[derive(Deref)]
 pub struct MainView {
@@ -28,41 +29,79 @@ impl MainView {
         let sidebar = Sidebar::new();
         split.set_sidebar(Some(&*sidebar));
 
-        MainView {
+        let view = MainView {
             split,
             sidebar,
             controller,
-        }
+        };
+
+        view.show_welcome();
+
+        view
     }
 
-    pub fn set_device(&self, device: Option<Tangara>) {
-        match device {
-            None => {
-                self.sidebar.device_nav.set_child(None::<&gtk::Widget>);
-                self.split.set_content(Some(&ui::welcome::page()));
-            }
-            Some(tangara) => {
-                let list = DeviceNavBuilder::new(tangara, self.controller.clone())
-                    .add_item(
-                        "Overview",
-                        "companion-overview-symbolic",
-                        move |device| ui::overview::page(device),
-                    )
-                    .add_item(
-                        "Lua Console",
-                        "companion-lua-console-symbolic",
-                        move |device| ui::lua::page(device),
-                    )
-                    .add_item(
-                        "Firmware Update",
-                        "companion-firmware-update-symbolic",
-                        |device| ui::update::flow(device),
-                    )
-                    .build();
+    fn show_page_without_sidebar(&self, page: &adw::NavigationPage) {
+        self.sidebar.device_nav.set_child(None::<&gtk::Widget>);
+        self.split.set_content(Some(page));
+    }
 
-                self.sidebar.device_nav.set_child(Some(&list));
+    pub fn show_welcome(&self) {
+        self.show_page_without_sidebar(&ui::welcome::page());
+    }
+
+    pub fn show_connecting(&self, params: &ConnectionParams) {
+        self.show_page_without_sidebar(&ui::connecting::page(params));
+    }
+
+    pub fn connected_to_device(&self, tangara: Tangara) {
+        let list = DeviceNavBuilder::new(tangara, self.controller.clone())
+            .add_item(
+                "Overview",
+                "companion-overview-symbolic",
+                move |device| ui::overview::page(device),
+            )
+            .add_item(
+                "Lua Console",
+                "companion-lua-console-symbolic",
+                move |device| ui::lua::page(device),
+            )
+            .add_item(
+                "Firmware Update",
+                "companion-firmware-update-symbolic",
+                |device| ui::update::flow(device),
+            )
+            .build();
+
+        self.sidebar.device_nav.set_child(Some(&list));
+    }
+
+    pub fn device_error(&self, message: &str, on_reboot: impl FnOnce() + 'static) {
+        let reboot_button = gtk::Button::builder()
+            .label("Reboot Tangara")
+            .build();
+
+        let on_reboot = RefCell::new(Some(on_reboot));
+        reboot_button.connect_clicked(move |_| {
+            if let Some(callback) = on_reboot.borrow_mut().take() {
+                callback();
             }
-        }
+        });
+
+        let status_page = adw::StatusPage::builder()
+            .icon_name("companion-computer-sadface-symbolic")
+            .title("Error connecting to Tangara")
+            .description(message)
+            .child(&reboot_button)
+            .build();
+
+        let page = NavPageBuilder::clamped(&status_page)
+            .title(status_page.title().as_str())
+            .header(adw::HeaderBar::builder()
+                .show_title(false)
+                .build())
+            .build();
+
+        self.show_page_without_sidebar(&page);
     }
 }
 

@@ -3,10 +3,11 @@ pub mod info;
 
 use std::sync::Arc;
 
+use futures::channel::oneshot;
 use serialport::{SerialPortInfo, UsbPortInfo, SerialPortType};
 use thiserror::Error;
 
-use crate::{flash::{Flash, FlashTask, self}, firmware};
+use crate::{firmware, flash::{self, open_flash_connection, Flash, FlashTask}};
 
 pub use connection::Connection;
 
@@ -31,6 +32,14 @@ pub enum FindTangaraError {
     Port(#[from] serialport::Error),
     #[error("Can't find Tangara, make sure it's plugged in and turned on")]
     NoTangara,
+}
+
+#[derive(Debug, Error)]
+pub enum ResetError {
+    #[error(transparent)]
+    Serial(#[from] serialport::Error),
+    #[error(transparent)]
+    Flash(#[from] espflash::Error),
 }
 
 impl Tangara {
@@ -93,6 +102,21 @@ impl Tangara {
     }
 }
 
+pub async fn reset(port: &ConnectionParams) -> Result<(), ResetError> {
+    let (tx, rx) = oneshot::channel();
+    let port = port.clone();
+    std::thread::spawn(move || {
+        let _ = tx.send(reset_blocking(&port));
+    });
+    rx.await.unwrap()
+}
+
+fn reset_blocking(port: &ConnectionParams) -> Result<(), ResetError> {
+    let mut connection = open_flash_connection(port)?;
+    connection.begin()?;
+    connection.reset()?;
+    Ok(())
+}
 
 /// Finds a Tangara using the serialport crate. Cross platform, but
 /// doesn't work under Flatpak as it relies on udev and Flatpak does
