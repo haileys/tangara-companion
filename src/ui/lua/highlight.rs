@@ -200,6 +200,7 @@ impl Render {
 pub struct Theme {
     _base00: Color,
     _base01: Color,
+    #[allow(unused)]
     pub base02: Color,
     _base03: Color,
     _base04: Color,
