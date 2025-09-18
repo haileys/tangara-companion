@@ -39,6 +39,8 @@ cargo_args=()
 
 # set env vars we need for cross compilation
 cl_flags=(
+    -msse2
+    -fms-compatibility
     -fuse-ld=lld-link
     "-I$XWIN_KIT/crt/include"
     "-I$XWIN_KIT/sdk/include/ucrt"

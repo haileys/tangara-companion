@@ -12,8 +12,9 @@ path = "src/main.rs"
 tangara-lib = { workspace = true }
 
 # workspace deps
+async-stream = { workspace = true }
 futures = { workspace = true }
-mio-serial = { workspace = true }
+mio = { workspace = true }
 semver = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
@@ -22,7 +23,8 @@ thiserror = { workspace = true }
 # general deps
 console = "0.15"
 indicatif = "0.17"
-reqwest = { version = "0.12", features = ["json", "rustls-tls-native-roots"] }
+reqwest = { version = "0.12", features = ["json"] }
 structopt = "0.3"
 tokio = { version = "1.43", features = ["macros", "net"] }
-tempfile = "3.16.0"
+tempfile = "3.16"
+tokio-serial = "5.4"
