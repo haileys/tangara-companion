@@ -1,6 +1,6 @@
 use core::slice;
-use std::io::{Read, Write};
-use std::{io, string::FromUtf8Error};
+use std::io::{self, Read, Write};
+use std::string::FromUtf8Error;
 use std::time::Duration;
 
 use futures::channel::oneshot;
@@ -42,13 +42,16 @@ pub enum LuaError {
 
 pub type SerialPortError = mio_serial::Error;
 
-pub fn open_serial(serial_port: &SerialPortInfo) -> Result<Box<dyn SerialPort>, SerialPortError> {
+pub fn build_serial(serial_port: &SerialPortInfo) -> mio_serial::SerialPortBuilder {
     mio_serial::new(&serial_port.port_name, CONSOLE_BAUD_RATE)
         .data_bits(DataBits::Eight)
         .stop_bits(StopBits::One)
         .timeout(CONSOLE_TIMEOUT)
         .flow_control(FlowControl::None)
-        .open()
+}
+
+pub fn open_serial(serial_port: &SerialPortInfo) -> Result<Box<dyn SerialPort>, SerialPortError> {
+    build_serial(serial_port).open()
 }
 
 impl Connection {
