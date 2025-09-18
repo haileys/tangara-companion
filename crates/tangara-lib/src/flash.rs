@@ -7,7 +7,7 @@ use espflash::{
     target::ProgressCallbacks,
 };
 use futures::channel::{mpsc, oneshot};
-use serialport::FlowControl;
+use mio_serial::FlowControl;
 use thiserror::Error;
 
 use crate::device::ConnectionParams;
@@ -58,7 +58,7 @@ impl FlashTask {
 #[derive(Debug, Error)]
 pub enum FlashError {
     #[error("opening usb serial interface: {0}")]
-    OpenSerial(#[from] serialport::Error),
+    OpenSerial(#[from] mio_serial::Error),
     #[error("connecting to device: {0}")]
     Connect(#[source] espflash::Error),
     #[error("writing image: {0}: {1}")]
@@ -80,11 +80,11 @@ fn run_flash(
 }
 
 pub fn open_flash_connection(port: &ConnectionParams)
-    -> Result<espflash::connection::Connection, serialport::Error>
+    -> Result<espflash::connection::Connection, mio_serial::Error>
 {
     let connection_baud = 115_200;
 
-    let serial = serialport::new(&port.serial.port_name, connection_baud)
+    let serial = mio_serial::new(&port.serial.port_name, connection_baud)
         .flow_control(FlowControl::None)
         .open_native()?;
 

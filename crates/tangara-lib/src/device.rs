@@ -4,7 +4,7 @@ pub mod info;
 use std::sync::Arc;
 
 use futures::channel::oneshot;
-use serialport::{SerialPortInfo, UsbPortInfo, SerialPortType};
+use mio_serial::{SerialPortInfo, UsbPortInfo, SerialPortType};
 use thiserror::Error;
 
 use crate::{firmware, flash::{self, open_flash_connection, Flash, FlashTask}};
@@ -29,7 +29,7 @@ pub struct ConnectionParams {
 #[derive(Debug, Error)]
 pub enum FindTangaraError {
     #[error("Error enumerating serial ports: {0}")]
-    Port(#[from] serialport::Error),
+    Port(#[from] mio_serial::Error),
     #[error("Can't find Tangara, make sure it's plugged in and turned on")]
     NoTangara,
 }
@@ -37,7 +37,7 @@ pub enum FindTangaraError {
 #[derive(Debug, Error)]
 pub enum ResetError {
     #[error(transparent)]
-    Serial(#[from] serialport::Error),
+    Serial(#[from] mio_serial::Error),
     #[error(transparent)]
     Flash(#[from] espflash::Error),
 }
@@ -121,8 +121,8 @@ fn reset_blocking(port: &ConnectionParams) -> Result<(), ResetError> {
 /// Finds a Tangara using the serialport crate. Cross platform, but
 /// doesn't work under Flatpak as it relies on udev and Flatpak does
 /// not have great udev support.
-fn find_serialport() -> Result<Option<ConnectionParams>, serialport::Error> {
-    for port in serialport::available_ports()? {
+fn find_serialport() -> Result<Option<ConnectionParams>, mio_serial::Error> {
+    for port in mio_serial::available_ports()? {
         if let SerialPortType::UsbPort(usb) = &port.port_type {
             if usb.vid == USB_VID && usb.pid == USB_PID {
                 return Ok(Some(ConnectionParams {

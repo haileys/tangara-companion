@@ -9,9 +9,9 @@ async-channel = { workspace = true }
 derive_more = { workspace = true }
 futures = { workspace = true }
 log = { workspace = true }
+mio-serial = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
-serialport = { workspace = true }
 thiserror = { workspace = true }
 
 # general deps

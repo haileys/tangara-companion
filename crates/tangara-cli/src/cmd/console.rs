@@ -5,7 +5,7 @@ use console::{Key, Term};
 use structopt::StructOpt;
 use tangara_lib::device::connection::{open_serial, SerialPortError};
 use thiserror::Error;
-use serialport::SerialPort;
+use mio_serial::SerialPort;
 
 use crate::device;
 

@@ -4,7 +4,7 @@ use std::{io, string::FromUtf8Error};
 use std::time::Duration;
 
 use futures::channel::oneshot;
-use serialport::{DataBits, FlowControl, SerialPort, SerialPortInfo, StopBits};
+use mio_serial::{DataBits, FlowControl, SerialPort, SerialPortInfo, StopBits};
 use thiserror::Error;
 
 const CONSOLE_BAUD_RATE: u32 = 115200;
@@ -15,7 +15,7 @@ static CONSOLE_PROMPT: &[u8] = " → ".as_bytes();
 #[derive(Debug, Error)]
 pub enum OpenError {
     #[error("Opening serial port: {0}")]
-    Port(#[from] serialport::Error),
+    Port(#[from] mio_serial::Error),
     #[error(transparent)]
     Connection(#[from] ConnectionError),
     #[error("Connection thread terminated unexpectedly")]
@@ -40,10 +40,10 @@ pub enum LuaError {
     InvalidUtf8(#[from] FromUtf8Error),
 }
 
-pub type SerialPortError = serialport::Error;
+pub type SerialPortError = mio_serial::Error;
 
 pub fn open_serial(serial_port: &SerialPortInfo) -> Result<Box<dyn SerialPort>, SerialPortError> {
-    serialport::new(&serial_port.port_name, CONSOLE_BAUD_RATE)
+    mio_serial::new(&serial_port.port_name, CONSOLE_BAUD_RATE)
         .data_bits(DataBits::Eight)
         .stop_bits(StopBits::One)
         .timeout(CONSOLE_TIMEOUT)
@@ -118,7 +118,7 @@ pub enum ConnectionError {
     #[error("io error: {0}")]
     Io(#[from] io::Error),
     #[error("port error: {0}")]
-    Port(#[from] serialport::Error),
+    Port(#[from] mio_serial::Error),
     #[error("syncing to console: {0}")]
     Sync(#[from] SyncError),
 }
@@ -186,7 +186,7 @@ pub enum SyncError {
     #[error("io error: {0}")]
     Io(#[from] io::Error),
     #[error("port error: {0}")]
-    Port(#[from] serialport::Error),
+    Port(#[from] mio_serial::Error),
     #[error("received unexpected data, desync")]
     UnexpectedData { expected: u8, received: u8 },
     #[error("too much output")]
