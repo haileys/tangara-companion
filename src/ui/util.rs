@@ -1,3 +1,9 @@
+use std::cell::RefCell;
+use std::future::Future;
+use std::rc::Rc;
+
+use futures::channel::oneshot;
+use futures::FutureExt;
 use glib::object::IsA;
 use gtk::prelude::BoxExt;
 use gtk::Align;
@@ -64,4 +70,39 @@ pub fn spinner_content() -> gtk::Box {
     box_.append(&spinner);
 
     box_
+}
+
+pub struct SendOnce<T> {
+    tx: Rc<RefCell<Option<oneshot::Sender<T>>>>,
+}
+
+impl<T> SendOnce<T> {
+    pub async fn with(func: impl FnOnce(Self)) -> Option<T> {
+        let (tx, rx) = Self::channel();
+        func(tx);
+        rx.await
+    }
+
+    pub fn channel() -> (SendOnce<T>, impl Future<Output = Option<T>>) {
+        let (tx, rx) = oneshot::channel();
+        let tx = Self::new(tx);
+        let rx = rx.map(|result| result.ok());
+        (tx, rx)
+    }
+
+    pub fn new(tx: oneshot::Sender<T>) -> Self {
+        SendOnce { tx: Rc::new(RefCell::new(Some(tx))) }
+    }
+
+    pub fn send(&self, value: T) {
+        if let Some(tx) = self.tx.borrow_mut().take() {
+            let _ = tx.send(value);
+        }
+    }
+}
+
+impl<T> Clone for SendOnce<T> {
+    fn clone(&self) -> Self {
+        SendOnce { tx: self.tx.clone() }
+    }
 }

@@ -1,5 +1,5 @@
 mod application;
-mod connecting;
+mod waiting;
 mod label_row;
 mod lua;
 mod nav;

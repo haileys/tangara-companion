@@ -20,7 +20,7 @@ pub struct Tangara {
     params: Arc<ConnectionParams>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ConnectionParams {
     pub serial: SerialPortInfo,
     pub usb: UsbPortInfo,

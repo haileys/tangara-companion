@@ -4,7 +4,15 @@ use tangara_lib::device::ConnectionParams;
 
 use crate::ui;
 
-pub fn page(params: &ConnectionParams) -> adw::NavigationPage {
+pub fn connect(params: &ConnectionParams) -> adw::NavigationPage {
+    page(params, "Connecting")
+}
+
+pub fn reboot(params: &ConnectionParams) -> adw::NavigationPage {
+    page(params, "Rebooting")
+}
+
+fn page(params: &ConnectionParams, verb: &str) -> adw::NavigationPage {
     let logo = ui::widgets::logo::logo();
 
     let hbox = gtk::Box::builder()
@@ -17,7 +25,7 @@ pub fn page(params: &ConnectionParams) -> adw::NavigationPage {
     spinner.start();
 
     let label = gtk::Label::builder()
-        .label(format!("Connecting to Tangara at {}...", params.serial.port_name))
+        .label(format!("{verb} to Tangara at {}...", params.serial.port_name))
         .build();
 
     hbox.append(&spinner);

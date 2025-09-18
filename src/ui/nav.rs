@@ -1,4 +1,5 @@
-use std::cell::{Cell, RefCell};
+use std::cell::Cell;
+use std::error::Error;
 use std::rc::{Rc, Weak};
 
 use adw::prelude::BinExt;
@@ -11,6 +12,9 @@ use tangara_lib::device::{ConnectionParams, Tangara};
 use crate::ui;
 use crate::ui::application::DeviceContext;
 use crate::ui::util::NavPageBuilder;
+
+use super::application::DeviceErrorChoice;
+use super::util::SendOnce;
 
 #[derive(Deref)]
 pub struct MainView {
@@ -35,8 +39,6 @@ impl MainView {
             controller,
         };
 
-        view.show_welcome();
-
         view
     }
 
@@ -50,7 +52,11 @@ impl MainView {
     }
 
     pub fn show_connecting(&self, params: &ConnectionParams) {
-        self.show_page_without_sidebar(&ui::connecting::page(params));
+        self.show_page_without_sidebar(&ui::waiting::connect(params));
+    }
+
+    pub fn show_rebooting(&self, params: &ConnectionParams) {
+        self.show_page_without_sidebar(&ui::waiting::reboot(params));
     }
 
     pub fn connected_to_device(&self, tangara: Tangara) {
@@ -75,21 +81,31 @@ impl MainView {
         self.sidebar.device_nav.set_child(Some(&list));
     }
 
-    pub fn device_error(&self, message: &str, on_reboot: impl FnOnce() + 'static) {
+    pub fn device_error(&self, params: &ConnectionParams, error: &dyn Error, choice: SendOnce<DeviceErrorChoice>) {
+        let message = format!("Error connecting to Tangara at {port_name}: {error}",
+            port_name = params.serial.port_name);
+
+        let retry_button = gtk::Button::builder()
+            .label("Retry connection")
+            .build();
+
+        retry_button.connect_clicked({
+            let choice = choice.clone();
+            move |_| { choice.send(DeviceErrorChoice::Retry); }
+        });
+
         let reboot_button = gtk::Button::builder()
             .label("Reboot Tangara")
             .build();
 
-        let on_reboot = RefCell::new(Some(on_reboot));
-        reboot_button.connect_clicked(move |_| {
-            if let Some(callback) = on_reboot.borrow_mut().take() {
-                callback();
-            }
+        reboot_button.connect_clicked({
+            let choice = choice.clone();
+            move |_| { choice.send(DeviceErrorChoice::Reboot); }
         });
 
         let status_page = adw::StatusPage::builder()
             .icon_name("companion-computer-sadface-symbolic")
-            .title("Error connecting to Tangara")
+            .title("Tangara is not responding")
             .description(message)
             .child(&reboot_button)
             .build();

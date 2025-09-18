@@ -25,8 +25,9 @@ thiserror = { workspace = true }
 
 # general deps
 env_logger = "0.11"
-tree-sitter = "0.20.10"
-tree-sitter-lua = "0.0.19"
+tree-sitter = "0.20"
+tree-sitter-lua = "0.0"
+async-stream = "0.3"
 
 [workspace]
 resolver = "2"

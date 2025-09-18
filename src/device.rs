@@ -1,38 +1,37 @@
 use std::time::Duration;
 
-use futures::{SinkExt, Stream,};
-use futures::channel::mpsc;
+use futures::Stream;
 use gtk::glib;
-use tangara_lib::device::{ConnectionParams, Tangara};
+use tangara_lib::device::{ConnectionParams, FindTangaraError, Tangara};
 
 const POLL_DURATION: Duration = Duration::from_secs(1);
 
 pub fn watch_port() -> impl Stream<Item = Option<ConnectionParams>> {
-    let (mut tx, rx) = mpsc::channel(1);
+    async_stream::stream! {
+        let mut current = find_device();
+        yield current.clone();
 
-    glib::spawn_future_local(async move {
-        let mut current = Tangara::find().ok();
-        let _ = tx.send(current.clone()).await;
-
-        while !tx.is_closed() {
+        loop {
             // TODO - see if we can subscribe to hardware events or something?
             glib::timeout_future(POLL_DURATION).await;
 
-            let params = Tangara::find().ok();
+            let params = find_device();
 
-            let current_port = current.as_ref().map(|p| &p.serial.port_name);
-            let latest_port = params.as_ref().map(|p| &p.serial.port_name);
-
-            if current_port == latest_port {
-                continue;
+            if params != current {
+                current = params;
+                yield current.clone();
             }
-
-            current = params;
-            let _: Result<_, _> = tx.send(current.clone()).await;
         }
+    }
+}
 
-        log::debug!("watch_port task finished");
-    });
-
-    rx
+fn find_device() -> Option<ConnectionParams> {
+    match Tangara::find() {
+        Ok(params) => Some(params),
+        Err(FindTangaraError::NoTangara) => None,
+        Err(err) => {
+            log::warn!("find_device: {err}");
+            None
+        }
+    }
 }
