@@ -13,7 +13,9 @@ tangara-lib = { workspace = true }
 
 # workspace deps
 async-stream = { workspace = true }
+env_logger = { workspace = true }
 futures = { workspace = true }
+log = { workspace = true }
 mio = { workspace = true }
 semver = { workspace = true }
 serde = { workspace = true }

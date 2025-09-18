@@ -2418,8 +2418,10 @@ version = "0.5.0"
 dependencies = [
  "async-stream",
  "console",
+ "env_logger",
  "futures",
  "indicatif",
+ "log",
  "mio",
  "reqwest",
  "semver",

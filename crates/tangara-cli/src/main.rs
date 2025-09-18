@@ -1,6 +1,7 @@
 use std::process::ExitCode;
 
 use console::{Term, style};
+use log::LevelFilter;
 use structopt::StructOpt;
 use thiserror::Error;
 
@@ -34,6 +35,12 @@ enum RunError {
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> ExitCode {
     let opt = Opt::from_args();
+
+    env_logger::builder()
+        .filter_level(LevelFilter::Debug)
+        .filter(Some("mio_serial"), LevelFilter::Info)
+        .parse_default_env()
+        .init();
 
     match run(opt).await {
         Ok(code) => code,
