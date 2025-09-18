@@ -42,8 +42,8 @@ members = [
 tangara-lib = { path = "crates/tangara-lib" }
 
 # GTK stack
-adw = { version = "0.7", package = "libadwaita", features = ["v1_4", "gtk_v4_6"] }
-gtk = { version = "0.9", package = "gtk4", features = ["v4_10"] }
+adw = { version = "0.8", package = "libadwaita", features = ["v1_4", "gtk_v4_6"] }
+gtk = { version = "0.10", package = "gtk4", features = ["v4_10"] }
 glib = "*"
 gio = "*"
 
