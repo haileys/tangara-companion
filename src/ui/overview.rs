@@ -126,14 +126,24 @@ fn database_group(database: &info::Database) -> adw::PreferencesGroup {
 }
 
 fn render_size(bytes: u64) -> String {
-    if bytes < 1024 { return format!("{bytes} b") }
+    if bytes < 1024 { return format!("{bytes} B") }
 
     let kib = bytes / 1024;
     if kib < 1024 { return format!("{kib} KiB") }
 
-    let mib = kib / 1024;
-    if mib < 1024 { return format!("{mib} MiB") }
+    let mib = (kib as f64) / 1024.0;
+    if mib < 1024.0 {
+        let prec = match mib {
+            1.0..10.0 => 1,
+            _ => 0,
+        };
+        return format!("{mib:.*} MiB", prec)
+    }
 
-    let gib = mib / 1024;
-    format!("{gib} GiB")
+    let gib = mib / 1024.0;
+    let prec = match gib {
+        1.0..10.0 => 1,
+        _ => 0,
+    };
+    format!("{gib:.*} GiB", prec)
 }
