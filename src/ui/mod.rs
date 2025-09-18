@@ -1,5 +1,5 @@
 mod application;
-mod waiting;
+mod spinner;
 mod label_row;
 mod lua;
 mod nav;

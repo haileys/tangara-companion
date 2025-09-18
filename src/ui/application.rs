@@ -99,6 +99,10 @@ async fn found_device(view: Rc<MainView>, params: ConnectionParams) {
                         }
                     }
                 }
+                DeviceErrorChoice::Reinstall => {
+                    view.show_rescue(&params);
+                    break;
+                }
             }
         }
 
@@ -125,4 +129,5 @@ async fn try_connect(view: Rc<MainView>, params: &ConnectionParams) -> Option<De
 pub enum DeviceErrorChoice {
     Retry,
     Reboot,
+    Reinstall,
 }

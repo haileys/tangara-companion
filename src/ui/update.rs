@@ -1,3 +1,4 @@
+use std::rc::Rc;
 use std::sync::Arc;
 
 use adw::prelude::{ActionRowExt, PreferencesGroupExt, PreferencesPageExt};
@@ -10,8 +11,9 @@ use gtk::{Align, FileDialog, FileFilter, Orientation};
 use gtk::gio::{Cancellable, File};
 use gtk::prelude::{BoxExt, ButtonExt, FileExt, WidgetExt};
 
+use tangara_lib::device::ConnectionParams;
 use tangara_lib::firmware::Firmware;
-use tangara_lib::flash::{FlashError, FlashStatus};
+use tangara_lib::flash::{self, FlashError, FlashStatus};
 
 use crate::ui::application::DeviceContext;
 use crate::ui::label_row::LabelRow;
@@ -21,8 +23,21 @@ use crate::util::weak;
 pub fn flow(device: DeviceContext) -> adw::NavigationPage {
     let nav = adw::NavigationView::new();
 
-    nav.add(&select_firmware_page(UpdateContext {
-        device,
+    nav.add(&select_firmware_page("Update Firmware", UpdateContext {
+        target: Rc::new(UpdateTarget::Device(device)),
+        nav: weak(&nav),
+    }));
+
+    adw::NavigationPage::builder()
+        .child(&nav)
+        .build()
+}
+
+pub fn rescue_flow(params: ConnectionParams) -> adw::NavigationPage {
+    let nav = adw::NavigationView::new();
+
+    nav.add(&select_firmware_page("Reinstall Firmware", UpdateContext {
+        target: Rc::new(UpdateTarget::Params(params)),
         nav: weak(&nav),
     }));
 
@@ -33,13 +48,18 @@ pub fn flow(device: DeviceContext) -> adw::NavigationPage {
 
 #[derive(Clone)]
 struct UpdateContext {
-    device: DeviceContext,
+    target: Rc<UpdateTarget>,
     nav: WeakRef<adw::NavigationView>,
 }
 
-fn select_firmware_page(ctx: UpdateContext) -> adw::NavigationPage {
+enum UpdateTarget {
+    Device(DeviceContext),
+    Params(ConnectionParams),
+}
+
+fn select_firmware_page(title: &str, ctx: UpdateContext) -> adw::NavigationPage {
     let page = adw::PreferencesPage::builder()
-        .title("Update Firmware")
+        .title(title)
         .build();
 
     page.add(&select_group(ctx));
@@ -192,13 +212,17 @@ fn flash_page(ctx: UpdateContext, firmware: Arc<Firmware>) -> adw::NavigationPag
         .build();
 
     // lock the app global navigation while we're flashing
-    let locked = ctx.device.nav.lock();
+    let locked = match &*ctx.target {
+        UpdateTarget::Device(device) => Some(device.nav.lock()),
+        UpdateTarget::Params(_) => None,
+    };
 
     // start flash now UI is built
     glib::spawn_future_local(async move {
-        let (flash, task) = ctx.device.tangara
-            .setup_flash(firmware)
-            .await;
+        let (flash, task) = match &*ctx.target {
+            UpdateTarget::Device(device) => device.tangara.setup_flash(firmware).await,
+            UpdateTarget::Params(params) => flash::setup(Arc::new(params.clone()), firmware),
+        };
 
         // spawn blocking flash task
         gtk::gio::spawn_blocking(move || task.run());

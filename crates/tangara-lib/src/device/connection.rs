@@ -9,7 +9,7 @@ use thiserror::Error;
 
 const CONSOLE_BAUD_RATE: u32 = 115200;
 const CONSOLE_TIMEOUT: Duration = Duration::from_secs(1);
-const MAX_CONSOLE_BUFFER: usize = 64*1024;
+const MAX_CONSOLE_BUFFER: usize = 16*1024;
 static CONSOLE_PROMPT: &[u8] = " → ".as_bytes();
 
 #[derive(Debug, Error)]

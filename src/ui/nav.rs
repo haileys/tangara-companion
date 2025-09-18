@@ -5,7 +5,7 @@ use std::rc::{Rc, Weak};
 use adw::prelude::BinExt;
 use derive_more::Deref;
 use glib::WeakRef;
-use gtk::prelude::{ButtonExt, GridExt, ListBoxRowExt, WidgetExt};
+use gtk::prelude::{BoxExt, ButtonExt, GridExt, ListBoxRowExt, WidgetExt};
 
 use tangara_lib::device::{ConnectionParams, Tangara};
 
@@ -14,6 +14,7 @@ use crate::ui::application::DeviceContext;
 use crate::ui::util::NavPageBuilder;
 
 use super::application::DeviceErrorChoice;
+use super::update;
 use super::util::SendOnce;
 
 #[derive(Deref)]
@@ -52,11 +53,15 @@ impl MainView {
     }
 
     pub fn show_connecting(&self, params: &ConnectionParams) {
-        self.show_page_without_sidebar(&ui::waiting::connect(params));
+        self.show_page_without_sidebar(&ui::spinner::connect(params));
     }
 
     pub fn show_rebooting(&self, params: &ConnectionParams) {
-        self.show_page_without_sidebar(&ui::waiting::reboot(params));
+        self.show_page_without_sidebar(&ui::spinner::reboot(params));
+    }
+
+    pub fn show_rescue(&self, params: &ConnectionParams) {
+        self.show_page_without_sidebar(&update::rescue_flow(params.clone()));
     }
 
     pub fn connected_to_device(&self, tangara: Tangara) {
@@ -103,11 +108,29 @@ impl MainView {
             move |_| { choice.send(DeviceErrorChoice::Reboot); }
         });
 
+        let reinstall_button = gtk::Button::builder()
+            .label("Reinstall firmware")
+            .build();
+
+        reinstall_button.connect_clicked({
+            let choice = choice.clone();
+            move |_| { choice.send(DeviceErrorChoice::Reinstall); }
+        });
+
+        let buttons = gtk::Box::builder()
+            .orientation(gtk::Orientation::Vertical)
+            .spacing(10)
+            .build();
+
+        buttons.append(&retry_button);
+        buttons.append(&reboot_button);
+        buttons.append(&reinstall_button);
+
         let status_page = adw::StatusPage::builder()
             .icon_name("companion-computer-sadface-symbolic")
             .title("Tangara is not responding")
             .description(message)
-            .child(&reboot_button)
+            .child(&buttons)
             .build();
 
         let page = NavPageBuilder::clamped(&status_page)
@@ -247,7 +270,7 @@ impl DeviceNavController {
         })
     }
 
-    pub fn lock(self: Rc<Self>) -> DeviceNavLocked {
+    pub fn lock(self: &Rc<Self>) -> DeviceNavLocked {
         let Some(list) = self.list.upgrade() else {
             return DeviceNavLocked { nav: Weak::new() };
         };
