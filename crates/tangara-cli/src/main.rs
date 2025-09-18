@@ -37,7 +37,7 @@ async fn main() -> ExitCode {
     let opt = Opt::from_args();
 
     env_logger::builder()
-        .filter_level(LevelFilter::Debug)
+        .filter_level(LevelFilter::Error)
         .filter(Some("mio_serial"), LevelFilter::Info)
         .parse_default_env()
         .init();
