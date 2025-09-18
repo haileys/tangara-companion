@@ -4,10 +4,12 @@
 #define MyAppName "Tangara Companion"
 #define MyAppPublisher "Hailey Somerville"
 #define MyAppURL "https://github.com/haileys/tangara-companion"
-#define MyAppExeName "tangara-companion.exe"
 #define MyAppAssocName "Tangara Release Archive"
 #define MyAppAssocExt ".tra"
 #define MyAppAssocKey StringChange(MyAppAssocName, " ", "") + MyAppAssocExt
+
+#define CompanionExe "tangara-companion.exe"
+#define CliExe "tangara.exe"
 
 [Setup]
 ; NOTE: The value of AppId uniquely identifies this application. Do not use the same AppId value in installers for other applications.
@@ -21,7 +23,7 @@ AppPublisherURL={#MyAppURL}
 AppSupportURL={#MyAppURL}
 AppUpdatesURL={#MyAppURL}
 DefaultDirName={autopf}\{#MyAppName}
-ChangesAssociations=yes
+ChangesAssociations=no
 DisableProgramGroupPage=yes
 LicenseFile={#ProjectDir}\COPYING
 ; Remove the following line to run in administrative install mode (install for all users.)
@@ -32,15 +34,18 @@ OutputBaseFilename={#SetupExeName}
 Compression=lzma
 SolidCompression=yes
 WizardStyle=modern
+ChangesEnvironment=yes
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
+Name: envPath; Description: "Add tangara.exe command line tool to PATH"
 
 [Files]
-Source: "{#CargoTargetDir}\{#MyAppExeName}"; DestDir: "{app}\bin\"; Flags: ignoreversion
+Source: "{#CargoTargetDir}\{#CompanionExe}"; DestDir: "{app}\bin\"; Flags: ignoreversion
+Source: "{#CargoTargetDir}\{#CliExe}"; DestDir: "{app}\cli\"; Flags: ignoreversion
 
 ; direct dll dependencies:
 Source: "{#GtkDir}\bin\adwaita-1-0.dll"; DestDir: "{app}\bin\"; Flags: ignoreversion
@@ -82,9 +87,63 @@ Source: "{#GtkDir}\lib\gdk-pixbuf-2.0\2.10.0\loaders\pixbufloader_svg.dll"; Dest
 ; NOTE: Don't use "Flags: ignoreversion" on any shared system files
 
 [Icons]
-Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\bin\{#MyAppExeName}"
-Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\bin\{#MyAppExeName}"; Tasks: desktopicon
+Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\bin\{#CompanionExe}"
+Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\bin\{#CompanionExe}"; Tasks: desktopicon
 
 [Run]
-Filename: "{app}\bin\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\bin\{#CompanionExe}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
 
+[Code]
+procedure EnvAddPath(Path: string);
+var
+    Paths: string;
+begin
+    { Retrieve current path (use empty string if entry not exists) }
+    if not RegQueryStringValue(HKEY_CURRENT_USER, 'Environment', 'Path', Paths)
+    then Paths := '';
+
+    { Skip if string already found in path }
+    if Pos(';' + Uppercase(Path) + ';', ';' + Uppercase(Paths) + ';') > 0 then exit;
+
+    { App string to the end of the path variable }
+    Paths := Paths + ';' + Path + ';'
+
+    { Overwrite (or create if missing) path environment variable }
+    if RegWriteStringValue(HKEY_CURRENT_USER, 'Environment', 'Path', Paths)
+    then Log(Format('Added to PATH: %s', [Path]))
+    else Log(Format('Error adding to PATH: %s', [Path]));
+end;
+
+procedure EnvRemovePath(Path: string);
+var
+    Paths: string;
+    P: Integer;
+begin
+    { Skip if registry entry not exists }
+    if not RegQueryStringValue(HKEY_CURRENT_USER, 'Environment', 'Path', Paths) then
+        exit;
+
+    { Skip if string not found in path }
+    P := Pos(';' + Uppercase(Path) + ';', ';' + Uppercase(Paths) + ';');
+    if P = 0 then exit;
+
+    { Update path variable }
+    Delete(Paths, P - 1, Length(Path) + 1);
+
+    { Overwrite path environment variable }
+    if RegWriteStringValue(HKEY_CURRENT_USER, 'Environment', 'Path', Paths)
+    then Log(Format('Removed from PATH: %s', [Path]))
+    else Log(Format('Error removing from PATH: %s', [Path]));
+end;
+
+procedure CurStepChanged(CurStep: TSetupStep);
+begin
+    if (CurStep = ssPostInstall) and IsTaskSelected('envPath')
+    then EnvAddPath(ExpandConstant('{app}') +'\cli');
+end;
+
+procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
+begin
+    if CurUninstallStep = usPostUninstall
+    then EnvRemovePath(ExpandConstant('{app}') +'\cli');
+end;
