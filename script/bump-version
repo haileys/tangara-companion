@@ -1,0 +1,15 @@
+#!/bin/bash
+### usage: bump-version <version>
+###
+### Bumps the package version in all the various places its scattered
+set -euo pipefail
+cd "$(dirname "$0")/.."
+source script/lib/functions.sh
+source script/lib/error.sh
+
+[[ "$#" == 1 ]] || usage
+version="$1"
+
+perl -pi -e 's/^version = "(.*?)"$/version = "'"$version"'"/g' Cargo.toml crates/*/Cargo.toml
+perl -pi -e "s/^  version: '(.*?)',$/  version: '$version',/g" meson.build
+cargo check
