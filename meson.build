@@ -1,6 +1,6 @@
 project(
   'tangara-companion', 'rust',
-  version: '0.4.3',
+  version: '0.5.0',
   meson_version: '>= 1.3.0',
 )
 
