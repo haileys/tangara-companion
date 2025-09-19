@@ -166,14 +166,6 @@ fn read_image_data(zip: &mut ZipArchive<File>, name: &str)
     let crc32 = file.crc32();
     let expected_crc32 = crc32fast::hash(&data);
 
-    // If the file size is not divisible by 4, we need to pad `FF` bytes to the end
-    // This should be removed when https://github.com/esp-rs/espflash/pull/951 is merged and released upstream.
-    let mut padded_bytes = 0;
-    if size % 4 != 0 {
-        padded_bytes = 4 - (size % 4);
-    }
-    data.extend(std::iter::repeat_n(0xFF, padded_bytes));
-
     if crc32 != expected_crc32 {
         Err(ReadImageError::BadCRC(crc32, expected_crc32))
     } else {
