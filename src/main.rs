@@ -12,6 +12,7 @@ const APP_ID: &str = "zone.cooltech.tangara.Companion";
 fn main() -> glib::ExitCode {
     env_logger::builder()
         .filter_level(LevelFilter::Debug)
+        .parse_filters("mio_serial=info,espflash::connection=info,espflash::flasher=error")
         .parse_default_env()
         .init();
 
