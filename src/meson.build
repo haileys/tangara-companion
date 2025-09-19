@@ -16,7 +16,7 @@ cargo_release = custom_target(
     meson.project_build_root(),
     meson.project_source_root(),
     '@OUTPUT@',
-    get_option('debug'),
+    get_option('debug').to_string(),
     meson.project_name(),
   ]
 )

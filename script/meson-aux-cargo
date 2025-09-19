@@ -9,7 +9,7 @@ export DEBUG="$4"
 export APP_BIN="$5"
 
 
-if [[ $DEBUG = "False" ]]
+if [[ $DEBUG = "false" ]]
 then
     echo "RELEASE MODE"
 
