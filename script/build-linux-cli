@@ -1,0 +1,53 @@
+#!/bin/bash
+### usage: build-linux-flatpak [opts..]
+###
+### Builds a Flatpak bundle for Linux
+
+set -euo pipefail
+cd "$(dirname "$0")/.."
+source script/lib/functions.sh
+source script/lib/error.sh
+
+# configure me!
+ARCH=x86_64
+DISTRO=bookworm
+BUILD_DIR="$PWD/target/$DISTRO"
+
+# check for prerequisite commands
+check-command docker
+
+# grab version number from git
+version="$(git describe --tags)"
+info "Version $version"
+
+# build it:
+info "Building $DISTRO docker builder image"
+builder_image="tangara-companion-build-$DISTRO"
+docker build \
+    -t "$builder_image" \
+    -f "pkg/linux/Dockerfile.$DISTRO" \
+    pkg/linux
+
+info "Building cli for $DISTRO"
+uid="$(id -u)"
+gid="$(id -g)"
+mkdir -p "$BUILD_DIR"
+docker run \
+    -ti \
+    --rm \
+    --mount "type=bind,src=$PWD,dst=/workspace,ro" \
+    --mount "type=bind,src=$BUILD_DIR,dst=/workspace/target" \
+    --env CARGO_HOME=/workspace/target/cargo-home \
+    --user "$uid:$gid" \
+    --workdir /workspace \
+    "$builder_image" \
+    cargo build --locked --release -p tangara-cli
+
+# make dist dir
+dist_dir="dist/$version"
+cli_bin="$dist_dir/tangara-cli-$version-linux-$ARCH"
+mkdir -p "$dist_dir"
+
+# copy cli to dist dir
+cp "$BUILD_DIR/release/tangara" "$cli_bin"
+win "cli executable written to $cli_bin"
