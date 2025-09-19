@@ -37,8 +37,8 @@ async fn main() -> ExitCode {
     let opt = Opt::from_args();
 
     env_logger::builder()
-        .filter_level(LevelFilter::Debug)
-        .filter(Some("mio_serial"), LevelFilter::Info)
+        .filter_level(log_level())
+        .parse_filters("mio_serial=info,reqwest=info,espflash::connection=info,espflash::flasher=error")
         .parse_default_env()
         .init();
 
@@ -52,6 +52,14 @@ async fn main() -> ExitCode {
 
             ExitCode::FAILURE
         }
+    }
+}
+
+fn log_level() -> LevelFilter {
+    if cfg!(debug_assertions) {
+        LevelFilter::Debug
+    } else {
+        LevelFilter::Info
     }
 }
 
