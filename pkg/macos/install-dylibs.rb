@@ -1,9 +1,9 @@
 #!/usr/bin/ruby
 require "fileutils"
 
-ARCH="x86_64"
-MACOS_KITS = ENV.fetch("MACOS_KITS")
-TOOL_PREFIX = "#{ARCH}-apple-darwin23-"
+ARCH="aarch64"
+GTK_PREFIX = `brew --prefix gtk4`.chomp
+$?.success? or fail "error running brew --prefix gtk4"
 
 def usage
   $stderr.puts "usage: install-dylibs.rb <bundle> -- <roots>"
@@ -11,7 +11,7 @@ def usage
 end
 
 def tool(name)
-  "#{TOOL_PREFIX}#{name}"
+  name
 end
 
 def warning(msg)
@@ -79,7 +79,7 @@ class Image
   end
 
   def source_path
-    path.gsub(%r{\A@rpath/}, "#{MACOS_KITS}/gtk/#{ARCH}/lib/")
+    path.gsub(%r{\A@rpath/}, "#{GTK_PREFIX}/lib/")
   end
 
   def rpaths

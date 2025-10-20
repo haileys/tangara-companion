@@ -10,25 +10,15 @@ source script/lib/error.sh
 
 # configure me!
 PROFILE=release
-TARGET=x86_64-apple-darwin
-ARCH=x86_64
+TARGET=aarch64-apple-darwin
+ARCH=aarch64
 
-# check for MACOS_KITS
-[ -n "${MACOS_KITS:-}" ] || die "MACOS_KITS not set, cannot proceed. Hailey will document this whole thing eventually"
-[ -d "$MACOS_KITS/osxcross/bin" ] || die "$MACOS_KITS/osxcross/bin does not exist, cannot proceed"
+# check for host arch
+[[ "$(uname -m)" == "$ARCH" ]] || die "cross compiling for macos not supported, must run this script on aarch64 macos"
 
 # grab version number from git
 version="$(git describe --tags)"
 info "Building version $version"
-
-# put cross compiler into PATH
-export PATH="$MACOS_KITS/osxcross/bin:$PATH"
-
-# set cross compile vars
-export PKG_CONFIG_LIBDIR="$MACOS_KITS/gtk/$ARCH/lib/pkgconfig"
-export PKG_CONFIG_ALLOW_CROSS=1
-export CC=x86_64-apple-darwin23-clang
-export CARGO_TARGET_X86_64_APPLE_DARWIN_LINKER="$CC"
 
 # pass --release to cargo if PROFILE==release:
 cargo_args=()
@@ -84,7 +74,7 @@ pkg/macos/install-dylibs.rb \
 # build distribution zip including Licenses at top level next to .app
 info "zipping app bundle"
 staging_dir="/tmp/tangaracompanion-build-$$"
-zip_name="tangaracompanion-$version-macos-x86_64.zip"
+zip_name="tangaracompanion-$version-macos-$ARCH.zip"
 mkdir -p "$staging_dir"
 cp -R "$bundle" "$staging_dir"
 (cd "$staging_dir" && zip -r9 "$zip_name" *)
