@@ -2,7 +2,9 @@
 require "fileutils"
 
 ARCH=ENV.fetch("ARCH")
-GTK_PREFIX = ENV.fetch("GTK_PREFIX")
+BREW_PREFIX = `brew --prefix`.chomp
+$?.success? or fail "brew --prefix"
+BREW_LIB_PREFIX_RE = %r{\A#{Regexp.escape(BREW_PREFIX)}/(opt/.*?/|Cellar/.*?/.*?/)lib/(?<lib>.*)}
 
 def usage
   $stderr.puts "usage: install-dylibs.rb <bundle> -- <roots>"
@@ -47,6 +49,13 @@ def read_exe(path)
   { dylibs: dylibs, rpaths: rpaths }
 end
 
+def make_load_via_rpath(exe_path, lib_path)
+  match = BREW_LIB_PREFIX_RE.match(lib_path) or return
+  lib = match[:lib]
+  cmd = [tool("install_name_tool"), "-change", lib_path, "@rpath/#{lib}", exe_path]
+  system!(*cmd)
+end
+
 def delete_rpaths(path)
   exe = read_exe(path)
   return if exe[:rpaths].empty?
@@ -78,7 +87,7 @@ class Image
   end
 
   def source_path
-    path.gsub(%r{\A@rpath/}, "#{GTK_PREFIX}/lib/")
+    path.gsub(%r{\A@rpath/}, "#{BREW_PREFIX}/lib/")
   end
 
   def rpaths
@@ -119,7 +128,7 @@ class Bundle
       next if import.start_with?("/usr/lib/")
       next if import.start_with?("/System/Library")
 
-      if import !~ %r{@rpath/}
+      if import !~ %r{@rpath/} && import !~ BREW_LIB_PREFIX_RE
         raise "unknown dependency #{import} in #{path}"
       end
 
@@ -140,17 +149,28 @@ end
 
 # install all deps and clean rpaths
 bundle.images.each do |path, dep|
-  next unless %r{\A@rpath/(?<lib>.*)} =~ path
+  match = %r{\A@rpath/(?<lib>.*)}.match(path) || BREW_LIB_PREFIX_RE.match(path)
+  next unless match
+  lib = match[:lib]
 
   puts "installing #{lib}"
 
   dest_path = "#{lib_dir}/#{lib}"
+  FileUtils.rm_f(dest_path)
   FileUtils.cp(dep.source_path, dest_path)
   delete_rpaths(dest_path)
 end
 
 # set rpath on roots
-bundle.roots.each do |path|
-  puts "adding rpath for #{path}"
-  add_rpath(path, lib: "@executable_path/../lib")
+bundle.roots.each do |root|
+  puts "adding rpath for #{root}"
+  add_rpath(root, lib: "@executable_path/../lib")
+end
+
+# recursively update all loads to use rpath
+Dir["#{lib_dir}/**/*.{dylib,so}"].each do |lib|
+  image = Image.new(lib)
+  image.imports.each do |import|
+    make_load_via_rpath(lib, import)
+  end
 end
