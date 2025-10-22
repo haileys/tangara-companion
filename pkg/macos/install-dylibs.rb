@@ -1,9 +1,8 @@
 #!/usr/bin/ruby
 require "fileutils"
 
-ARCH="aarch64"
-GTK_PREFIX = `brew --prefix gtk4`.chomp
-$?.success? or fail "error running brew --prefix gtk4"
+ARCH=ENV.fetch("ARCH")
+GTK_PREFIX = ENV.fetch("GTK_PREFIX")
 
 def usage
   $stderr.puts "usage: install-dylibs.rb <bundle> -- <roots>"

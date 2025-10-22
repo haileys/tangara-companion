@@ -11,10 +11,13 @@ source script/lib/error.sh
 # configure me!
 PROFILE=release
 TARGET=aarch64-apple-darwin
-ARCH=aarch64
+ARCH=arm64
 
 # check for host arch
-[[ "$(uname -m)" == "$ARCH" ]] || die "cross compiling for macos not supported, must run this script on aarch64 macos"
+[[ "$(uname -m)" == "$ARCH" ]] || die "cross compiling for macos not supported, must run this script on arm64 macos"
+
+# make sure gtk4 is installed
+GTK_PREFIX="$(brew --prefix gtk4)" || die "must install gtk4 from homebrew"
 
 # grab version number from git
 version="$(git describe --tags)"
@@ -50,7 +53,7 @@ info "Installing executables"
 
 # copy executable into bundle
 executable="$bundle/Contents/MacOS/tangara-companion"
-install -D "$build_dir/tangara-companion" "$executable"
+install -d "$build_dir/tangara-companion" "$executable"
 
 # copy rsvg loader into bundle manually
 # we only have to do this because its a runtime loaded library, and so for the
@@ -59,13 +62,13 @@ install -D "$build_dir/tangara-companion" "$executable"
 gdk_pixbuf="gdk-pixbuf-2.0/2.10.0"
 svg_loader_lib="$gdk_pixbuf/loaders/libpixbufloader-svg.so"
 loaders_cache="$gdk_pixbuf/loaders.cache"
-install -D "$MACOS_KITS/gtk/$ARCH/lib/$svg_loader_lib" "$bundle/Contents/lib/$svg_loader_lib"
-install -D "$MACOS_KITS/gtk/$ARCH/lib/$loaders_cache" "$bundle/Contents/lib/$loaders_cache"
+install -d "$GTK_PREFIX/lib/$svg_loader_lib" "$bundle/Contents/lib/$svg_loader_lib"
+install -d "$GTK_PREFIX/lib/$loaders_cache" "$bundle/Contents/lib/$loaders_cache"
 
 info "Bundling dynamic libraries"
 
 # install all dylib dependencies
-pkg/macos/install-dylibs.rb \
+ARCH="$ARCH" GTK_PREFIX="$GTK_PREFIX" pkg/macos/install-dylibs.rb \
     "$bundle/Contents/lib" \
     -- \
     "../MacOS/tangara-companion" \
