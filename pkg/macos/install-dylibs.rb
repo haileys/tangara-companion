@@ -168,7 +168,7 @@ bundle.roots.each do |root|
 end
 
 # recursively update all loads to use rpath
-Dir["#{lib_dir}/**/*.{dylib,so}"].each do |lib|
+["#{lib_dir}/../MacOS/tangara-companion", *Dir["#{lib_dir}/**/*.{dylib,so}"]].each do |lib|
   image = Image.new(lib)
   image.imports.each do |import|
     make_load_via_rpath(lib, import)
