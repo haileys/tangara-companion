@@ -1,7 +1,7 @@
 id: zone.cooltech.tangara.Companion
 branch: stable
 runtime: org.gnome.Platform
-runtime-version: "47"
+runtime-version: "49"
 sdk: org.gnome.Sdk
 sdk-extensions:
   - org.freedesktop.Sdk.Extension.rust-stable
